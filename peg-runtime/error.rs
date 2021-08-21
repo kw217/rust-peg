@@ -65,15 +65,26 @@ impl<L: Display + Debug> ::std::error::Error for ParseError<L> {
 }
 
 #[doc(hidden)]
-pub struct ErrorState {
+pub struct ErrorState<L> {
+    /// Furthest error we've hit so far.
     pub max_err_pos: usize,
+
+    /// Are we inside a lookahead/quiet block? If so, failure/error (and recovery rules) is disabled.
+    /// Non-zero => yes, to support nested blocks.
     pub suppress_fail: usize,
+
+    /// Are we reparsing after an failure? If so, compute and store expected set when we first hit the `max_err_pos` error.
     pub reparsing_on_error: bool,
+
+    /// The set of tokens we expected to find when we hit the failure. Updated when `reparsing_on_error`.
     pub expected: ExpectedSet,
+
+    /// The set of errors we have recovered from so far.
+    pub errors: HashSet<ParseError<L>>
 }
 
-impl ErrorState {
-    pub fn new(initial_pos: usize) -> ErrorState {
+impl<L> ErrorState<L> {
+    pub fn new(initial_pos: usize) -> Self {
         ErrorState {
             max_err_pos: initial_pos,
             suppress_fail: 0,
@@ -81,6 +92,7 @@ impl ErrorState {
             expected: ExpectedSet {
                 expected: HashSet::new(),
             },
+            errors: HashSet::new(),
         }
     }
 
@@ -106,6 +118,20 @@ impl ErrorState {
             }
         }
         RuleResult::Failed
+    }
+
+    /// Flag an error; errors take precedence over failures so the position is always reported
+    /// (even if there was a further failure).
+    #[inline(always)]
+    pub fn mark_error(&mut self, pos: usize, expected: &'static str) -> RuleResult<()> {
+        if self.suppress_fail == 0 {
+            if self.reparsing_on_error {
+                self.mark_failure_slow_path(pos, expected);
+            } else {
+                self.max_err_pos = pos;
+            }
+        }
+        RuleResult::Error(expected)
     }
 
     pub fn into_parse_error<I: Parse + ?Sized>(self, input: &I) -> ParseError<I::PositionRepr> {
