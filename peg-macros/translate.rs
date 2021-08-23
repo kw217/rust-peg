@@ -51,8 +51,8 @@ struct Context<'a> {
     rules_from_args: HashSet<String>,
     grammar_lifetime_params: &'a [TokenStream],
     input_ty: TokenStream,
-    position_repr_ty: TokenStream,
     parse_state_ty: TokenStream,
+    error_state_ty: TokenStream,
     extra_args_call: TokenStream,
     extra_args_def: TokenStream,
 }
@@ -70,8 +70,8 @@ pub(crate) fn compile_grammar(grammar: &Grammar) -> TokenStream {
         rules_from_args: HashSet::new(),
         grammar_lifetime_params: grammar_lifetime_params,
         input_ty: quote!(&'input Input<#(#grammar_lifetime_params),*>),
-        position_repr_ty: quote!(<Input<#(#grammar_lifetime_params),*> as ::peg::Parse>::PositionRepr),
         parse_state_ty: quote!(&mut ParseState<'input #(, #grammar_lifetime_params)*>),
+        error_state_ty: quote!(&mut ::peg::error::ErrorState<Input<#(#grammar_lifetime_params),*>>),
         extra_args_call: extra_args_call(grammar),
         extra_args_def: extra_args_def(grammar),
     };
@@ -189,15 +189,15 @@ fn ty_params_slice(ty_params: &Option<Vec<TokenStream>>) -> &[TokenStream] {
 
 fn rule_params_list(context: &Context, rule: &Rule) -> Vec<TokenStream> {
     let input_ty = &context.input_ty;
-    let position_repr_ty = &context.position_repr_ty;
     let parse_state_ty = &context.parse_state_ty;
+    let error_state_ty = &context.error_state_ty;
     let span = rule.span.resolved_at(Span::mixed_site());
     rule.params.iter().map(|param| {
         let name = &param.name;
         match &param.ty {
             RuleParamTy::Rust(ty) => quote_spanned!{ span => #name: #ty },
             RuleParamTy::Rule(ty) => quote_spanned!{ span =>
-                #name: impl Fn(#input_ty, #parse_state_ty, &mut ::peg::error::ErrorState<#position_repr_ty>, usize) -> ::peg::RuleResult<#ty>
+                #name: impl Fn(#input_ty, #parse_state_ty, #error_state_ty, usize) -> ::peg::RuleResult<#ty>
             },
         }
     }).collect()
@@ -212,6 +212,7 @@ fn compile_rule(context: &Context, rule: &Rule) -> TokenStream {
     let ty_params = ty_params_slice(&rule.ty_params);
     let input_ty = &context.input_ty;
     let parse_state_ty = &context.parse_state_ty;
+    let error_state_ty = &context.error_state_ty;
     let grammar_lifetime_params = context.grammar_lifetime_params;
 
     let mut context = context.clone();
@@ -254,7 +255,7 @@ fn compile_rule(context: &Context, rule: &Rule) -> TokenStream {
     match &rule.cache {
         None =>
             quote_spanned! { span =>
-                fn #name<'input #(, #grammar_lifetime_params)* #(, #ty_params)*>(__input: #input_ty, __state: #parse_state_ty, __err_state: &mut ::peg::error::ErrorState<PositionRepr>, __pos: usize #extra_args_def #(, #rule_params)*) -> ::peg::RuleResult<#ret_ty> {
+                fn #name<'input #(, #grammar_lifetime_params)* #(, #ty_params)*>(__input: #input_ty, __state: #parse_state_ty, __err_state: #error_state_ty, __pos: usize #extra_args_def #(, #rule_params)*) -> ::peg::RuleResult<#ret_ty> {
                     #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
                     #wrapped_body
                 }
@@ -279,7 +280,7 @@ fn compile_rule(context: &Context, rule: &Rule) -> TokenStream {
             match cache_type {
                 Cache::Simple =>
                     quote_spanned! { span =>
-                        fn #name<'input #(, #grammar_lifetime_params)* #(, #ty_params)*>(__input: #input_ty, __state: #parse_state_ty, __err_state: &mut ::peg::error::ErrorState<PositionRepr>, __pos: usize #extra_args_def #(, #rule_params)*) -> ::peg::RuleResult<#ret_ty> {
+                        fn #name<'input #(, #grammar_lifetime_params)* #(, #ty_params)*>(__input: #input_ty, __state: #parse_state_ty, __err_state: #error_state_ty, __pos: usize #extra_args_def #(, #rule_params)*) -> ::peg::RuleResult<#ret_ty> {
                             #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
                             if let Some(entry) = __state.#cache_field.get(&__pos) {
                                 #cache_trace
@@ -293,7 +294,7 @@ fn compile_rule(context: &Context, rule: &Rule) -> TokenStream {
                     },
                 Cache::Recursive =>
                     quote_spanned! { span =>
-                        fn #name<'input #(, #grammar_lifetime_params)* #(, #ty_params)*>(__input: #input_ty, __state: #parse_state_ty, __err_state: &mut ::peg::error::ErrorState<PositionRepr>, __pos: usize #extra_args_def #(, #rule_params)*) -> ::peg::RuleResult<#ret_ty> {
+                        fn #name<'input #(, #grammar_lifetime_params)* #(, #ty_params)*>(__input: #input_ty, __state: #parse_state_ty, __err_state: #error_state_ty, __pos: usize #extra_args_def #(, #rule_params)*) -> ::peg::RuleResult<#ret_ty> {
                             #![allow(non_snake_case, unused, clippy::redundant_closure_call)]
                             if let Some(entry) = __state.#cache_field.get(&__pos) {
                                 #cache_trace
@@ -457,7 +458,7 @@ fn compile_literal_expr(s: &Literal, continuation: TokenStream) -> TokenStream {
     quote_spanned! { span =>
             match ::peg::ParseLiteral::parse_string_literal(__input, __pos, #s) {
             ::peg::RuleResult::Matched(__pos, __val) => { #continuation }
-            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__pos, __e); ::peg::RuleResult::Error(__e) }  // unexpected, but do something sensible
+            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__input, __pos, __e); ::peg::RuleResult::Error(__e) }  // unexpected, but do something sensible
             ::peg::RuleResult::Failed => { __err_state.mark_failure(__pos, #escaped_str); ::peg::RuleResult::Failed }
         }
     }
@@ -481,7 +482,7 @@ fn compile_pattern_expr(pattern_group: &Group, success_res: TokenStream) -> Toke
                 _ => #not_in_set,
             }
             ::peg::RuleResult::Failed => { __err_state.mark_failure(__pos, #pat_str); ::peg::RuleResult::Failed },
-            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__pos, __e); ::peg::RuleResult::Error(__e) },  // unexpected, but do something sensible
+            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__input, __pos, __e); ::peg::RuleResult::Error(__e) },  // unexpected, but do something sensible
         }
     }
 }
@@ -773,6 +774,21 @@ fn compile_expr(context: &Context, e: &SpannedExpr, result_used: bool) -> TokenS
         FailExpr(ref expected) => {
             quote_spanned! { span => { __err_state.mark_failure(__pos, #expected); ::peg::RuleResult::Failed }}
         }
+        RecoverExpr(ref message, ref expr) => {
+            let recover_res = compile_expr(context, expr, result_used);
+            quote_spanned! { span => {
+                __err_state.mark_error(__input, __pos, #message);
+
+                __err_state.suppress_fail += 1;
+                let __recover_res = #recover_res;
+                __err_state.suppress_fail -= 1;
+
+                match __recover_res {
+                    ::peg::RuleResult::Matched(__newpos, __value) => ::peg::RuleResult::Matched(__newpos, __value),
+                    ::peg::RuleResult::Failed | ::peg::RuleResult::Error(..) => ::peg::RuleResult::Error(#message)
+                }
+            }}
+        }
 
         PrecedenceExpr { ref levels } => {
             let mut pre_rules = Vec::new();
@@ -913,11 +929,11 @@ fn compile_expr(context: &Context, e: &SpannedExpr, result_used: bool) -> TokenS
             quote_spanned! { span => {
                 fn __infix_parse<T, S>(
                     state: &mut S,
-                    err_state: &mut ::peg::error::ErrorState<PositionRepr>,
+                    err_state: &mut ::peg::error::ErrorState<Input>,
                     min_prec: i32,
                     lpos: usize,
-                    prefix_atom: &Fn(usize, &mut S, &mut ::peg::error::ErrorState<PositionRepr>, &Fn(usize, i32, &mut S, &mut ::peg::error::ErrorState<PositionRepr>) -> ::peg::RuleResult<T>) -> ::peg::RuleResult<T>,
-                    level_code: &Fn(usize, usize, i32, T, &mut S, &mut ::peg::error::ErrorState<PositionRepr>, &Fn(usize, i32, &mut S, &mut ::peg::error::ErrorState<PositionRepr>) -> ::peg::RuleResult<T>) -> (T, ::peg::RuleResult<()>),
+                    prefix_atom: &Fn(usize, &mut S, &mut ::peg::error::ErrorState<Input>, &Fn(usize, i32, &mut S, &mut ::peg::error::ErrorState<Input>) -> ::peg::RuleResult<T>) -> ::peg::RuleResult<T>,
+                    level_code: &Fn(usize, usize, i32, T, &mut S, &mut ::peg::error::ErrorState<Input>, &Fn(usize, i32, &mut S, &mut ::peg::error::ErrorState<Input>) -> ::peg::RuleResult<T>) -> (T, ::peg::RuleResult<()>),
                 ) -> ::peg::RuleResult<T> {
                     let initial = {
                         prefix_atom(lpos, state, err_state, &|pos, min_prec, state, err_state| {

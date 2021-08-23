@@ -65,7 +65,7 @@ impl<L: Display + Debug> ::std::error::Error for ParseError<L> {
 }
 
 #[doc(hidden)]
-pub struct ErrorState<L> {
+pub struct ErrorState<I: Parse + ?Sized> {
     /// Furthest error we've hit so far.
     pub max_err_pos: usize,
 
@@ -80,10 +80,10 @@ pub struct ErrorState<L> {
     pub expected: ExpectedSet,
 
     /// The set of errors we have recovered from so far.
-    pub errors: HashSet<ParseError<L>>
+    pub errors: Vec<ParseError<<I as Parse>::PositionRepr>>
 }
 
-impl<L> ErrorState<L> {
+impl<I: Parse + ?Sized> ErrorState<I> {
     pub fn new(initial_pos: usize) -> Self {
         ErrorState {
             max_err_pos: initial_pos,
@@ -92,7 +92,7 @@ impl<L> ErrorState<L> {
             expected: ExpectedSet {
                 expected: HashSet::new(),
             },
-            errors: HashSet::new(),
+            errors: vec![],
         }
     }
 
@@ -123,18 +123,22 @@ impl<L> ErrorState<L> {
     /// Flag an error; errors take precedence over failures so the position is always reported
     /// (even if there was a further failure).
     #[inline(always)]
-    pub fn mark_error(&mut self, pos: usize, expected: &'static str) -> RuleResult<()> {
+    pub fn mark_error(&mut self, input: &I, pos: usize, error: &'static str) -> RuleResult<()> {
         if self.suppress_fail == 0 {
             if self.reparsing_on_error {
-                self.mark_failure_slow_path(pos, expected);
+                self.mark_failure_slow_path(pos, error);
             } else {
                 self.max_err_pos = pos;
             }
+            let location = Parse::position_repr(input, pos.into());
+            let mut expected = ExpectedSet { expected: HashSet::new() };
+            expected.expected.insert(error);
+            self.errors.push(ParseError { location, expected })
         }
-        RuleResult::Error(expected)
+        RuleResult::Error(error)
     }
 
-    pub fn into_parse_error<I: Parse + ?Sized>(self, input: &I) -> ParseError<I::PositionRepr> {
+    pub fn into_parse_error(self, input: &I) -> ParseError<I::PositionRepr> {
         ParseError {
             location: Parse::position_repr(input, self.max_err_pos.into()),
             expected: self.expected,

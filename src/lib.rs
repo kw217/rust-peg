@@ -15,7 +15,8 @@
 //! * Helpful `rustc` error messages for errors in the grammar definition or the
 //!   Rust code embedded within it
 //! * Rule-level tracing to debug grammars
-//!
+//! * Error recovery
+
 //! ## Overview
 //!
 //! The `peg::parser!{}` macro encloses a `grammar NAME() for INPUT_TYPE { ...
@@ -123,6 +124,8 @@
 //!     error messages.
 //!   * `expected!("something")` - fail to match, and report the specified string as expected
 //!     at the current location.
+//!   * `error!("something" e) - report error, then attempt to recover by matching the expression
+//!      or sequence `e` and returning its value.
 //!   * `precedence!{ ... }` - Parse infix, prefix, or postfix expressions by precedence climbing.
 //!     [(details)](#precedence-climbing)
 //!
@@ -141,7 +144,7 @@
 //!
 //! If your input type is a slice of an enum type, a pattern could match an enum variant like
 //! `[Token::Operator('+')]`.
-//! 
+//!
 //! Variables captured by the pattern are accessible in a subsequent action
 //! block: `[Token::Integer(i)] { i }`
 //!
@@ -153,6 +156,33 @@
 //! The repeat operators `*` and `**` can be followed by an optional range specification of the
 //! form `<n>` (exact), `<n,>` (min), `<,m>` (max) or `<n,m>` (range), where `n` and `m` are either
 //! integers, or a Rust `usize` expression enclosed in `{}`.
+//!
+//! ### Errors
+//!
+//! Errors support recovery: the ability to report an error but continue to parse the rest of the
+//! input anyway. This allows the parser to report more than one error at once, and to provide
+//! a sensible parse of most of the input even when there are errors. These are both very important
+//! in applications like IDEs.
+//!
+//! The `error!("something" e)` syntax reports an error with the given message at the current
+//! location, and then attempts to recover.
+//!
+//! * When an error is reported, no further alternatives are tried: parsing immediately stops
+//!   at this point (unlike ordinary failure which causes the parser to try other choices).
+//! * The reported error is added to the list of errors.
+//! * Then the parser attempts to continue by matching the recovery sequence.
+//!   The resulting value is returned as the result of the `error!` expression;
+//!   typically this is just a placeholder value of the right type.
+//!   If the recovery expression fails or encounters an error, recovery is abandoned
+//!   and the `error!` expression returns the indicated error (`"something"`).
+//!
+//! This mechanism is based on [Sergio Medeiros and Fabio Mascarenhas,
+//! _Syntax Error Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1806.11150).
+//! Tracking the furthest failure position is simplified by observing that an error
+//! is always reported over a failure even if a previous failure was further through the input.
+//! `rust-peg` treats failure or error of a recovery expression differently than Medeiros and
+//! Mascarenhas - we report the original error (as if there was no recovery expression),
+//! whereas Medeiros and Mascarenhas pass through the failure or error of the recovery expression.
 //!
 //! ### Precedence climbing
 //!

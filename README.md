@@ -2,7 +2,7 @@
 
 [Documentation](https://docs.rs/peg) | [Release Notes](https://github.com/kevinmehall/rust-peg/releases)
 
-`rust-peg` is a simple yet flexible parser generator that makes it easy to write robust parsers. Based on the [Parsing Expression Grammar](https://en.wikipedia.org/wiki/Parsing_expression_grammar) formalism, it provides a Rust macro that builds a recursive descent parser from a concise definition of the grammar. 
+`rust-peg` is a simple yet flexible parser generator that makes it easy to write robust parsers. Based on the [Parsing Expression Grammar](https://en.wikipedia.org/wiki/Parsing_expression_grammar) formalism, it provides a Rust macro that builds a recursive descent parser from a concise definition of the grammar.
 
 ## Features
 
@@ -13,6 +13,7 @@
 * Helpful `rustc` error messages for errors in the grammar definition or the Rust
   code embedded within it
 * Rule-level tracing to debug grammars
+* Error recovery
 
 ## Example
 
@@ -34,7 +35,7 @@ pub fn main() {
 }
 ```
 
-[See the tests for more examples](./tests/run-pass/)  
+[See the tests for more examples](./tests/run-pass/)
 [Grammar rule syntax reference in rustdoc](https://docs.rs/peg)
 
 ## Comparison with similar parser generators
@@ -60,3 +61,7 @@ pub fn main() {
 [annotate-snippets]: https://crates.io/crates/annotate-snippets
 [codespan-reporting]: https://crates.io/crates/codespan-reporting
 [codemap-diagnostic]: https://crates.io/crates/codemap-diagnostic
+
+## Development
+
+The `rust-peg` grammar is written in `rust-peg`: `peg-macros/grammar.rustpeg`. To avoid the circular dependency, a precompiled grammar is checked in as `peg-macros/grammar.rs`. To regenerate this, run the `./bootstrap.sh` script.
