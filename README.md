@@ -65,3 +65,6 @@ pub fn main() {
 ## Development
 
 The `rust-peg` grammar is written in `rust-peg`: `peg-macros/grammar.rustpeg`. To avoid the circular dependency, a precompiled grammar is checked in as `peg-macros/grammar.rs`. To regenerate this, run the `./bootstrap.sh` script.
+
+There is a large test suite which uses [`trybuild`](https://crates.io/crates/trybuild) to support testing for compilation failure errors. Use `cargo test` to test them all,
+or `cargo test -- trybuild trybuild=lifetimes.ts` to test just the indicated file.

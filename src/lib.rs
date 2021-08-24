@@ -176,8 +176,10 @@
 //!   If the recovery expression fails or encounters an error, recovery is abandoned
 //!   and the `error!` expression returns the indicated error (`"something"`).
 //!
-//! This mechanism is based on [Sergio Medeiros and Fabio Mascarenhas,
-//! _Syntax Error Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1806.11150).
+//! This mechanism is based on [Sérgio Medeiros and Fabio Mascarenhas,
+//! _Syntax Error Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1806.11150)
+//! and [Sérgio Queiroz de Medeiros, Gilney de Azevedo Alvez Junior, and Fabio Mascarenhas,
+//! _Automatic Syntax Error Reporting and Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1905.02145)
 //! Tracking the furthest failure position is simplified by observing that an error
 //! is always reported over a failure even if a previous failure was further through the input.
 //! `rust-peg` treats failure or error of a recovery expression differently than Medeiros and
