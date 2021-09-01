@@ -15,6 +15,13 @@ impl ExpectedSet {
     pub fn tokens<'a>(&'a self) -> impl Iterator<Item = &'static str> + 'a {
         self.expected.iter().map(|x| *x)
     }
+
+    /// Construct a new singleton set.
+    pub fn singleton(error: &'static str) -> Self {
+        let mut expected = HashSet::new();
+        expected.insert(error);
+        ExpectedSet { expected }
+    }
 }
 
 impl Display for ExpectedSet {
@@ -48,6 +55,14 @@ pub struct ParseError<L> {
     pub expected: ExpectedSet,
 }
 
+// TODO Make this a method
+pub fn new_parse_error<I: Parse + ?Sized>(input: &I, pos: usize, expected: ExpectedSet) -> ParseError<I::PositionRepr> {
+    ParseError {
+        location: input.position_repr(pos),
+        expected,
+    }
+}
+
 impl<L: Display> Display for ParseError<L> {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
         write!(
@@ -66,21 +81,30 @@ impl<L: Display + Debug> ::std::error::Error for ParseError<L> {
 
 #[doc(hidden)]
 pub struct ErrorState<I: Parse + ?Sized> {
-    /// Furthest error we've hit so far.
+    /// Furthest failure we've hit so far. Not relevant to errors.
     pub max_err_pos: usize,
 
-    /// Are we inside a lookahead/quiet block? If so, failure/error (and recovery rules) is disabled.
+    /// Are we inside a lookahead/quiet block? If so, failure/error and recovery rules are disabled.
     /// Non-zero => yes, to support nested blocks.
     pub suppress_fail: usize,
 
-    /// Are we reparsing after an failure? If so, compute and store expected set when we first hit the `max_err_pos` error.
+    /// Are we reparsing after an failure? If so, compute and store expected set of all alternative expectations
+    /// when we are at offset `max_err_pos`. Not required for errors.
     pub reparsing_on_error: bool,
 
     /// The set of tokens we expected to find when we hit the failure. Updated when `reparsing_on_error`.
     pub expected: ExpectedSet,
 
     /// The set of errors we have recovered from so far.
-    pub errors: Vec<ParseError<<I as Parse>::PositionRepr>>
+    pub errors: Vec<ParseError<<I as Parse>::PositionRepr>>,
+}
+
+// Not sure why this isn't derivable.
+impl<I: Parse + ?Sized> Debug for ErrorState<I> where <I as Parse>::PositionRepr : Debug {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
+        write!(fmt, "ErrorState {{ max_err_pos: {:?}, suppress_fail: {:?}, reparsing_on_error: {:?}, expected: {:?}, errors: {:?} }}",
+            self.max_err_pos, self.suppress_fail, self.reparsing_on_error, self.expected, self.errors)
+    }
 }
 
 impl<I: Parse + ?Sized> ErrorState<I> {
@@ -120,28 +144,15 @@ impl<I: Parse + ?Sized> ErrorState<I> {
         RuleResult::Failed
     }
 
-    /// Flag an error; errors take precedence over failures so the position is always reported
-    /// (even if there was a further failure).
+    /// Flag an error.
     #[inline(always)]
-    pub fn mark_error(&mut self, input: &I, pos: usize, error: &'static str) -> RuleResult<()> {
+    pub fn mark_error(&mut self, input: &I, pos: usize, error: &'static str) {
         if self.suppress_fail == 0 {
-            if self.reparsing_on_error {
-                self.mark_failure_slow_path(pos, error);
-            } else {
-                self.max_err_pos = pos;
-            }
-            let location = Parse::position_repr(input, pos.into());
-            let mut expected = ExpectedSet { expected: HashSet::new() };
-            expected.expected.insert(error);
-            self.errors.push(ParseError { location, expected })
+            self.errors.push(new_parse_error(input, pos, ExpectedSet::singleton(error)));
         }
-        RuleResult::Error(error)
     }
 
     pub fn into_parse_error(self, input: &I) -> ParseError<I::PositionRepr> {
-        ParseError {
-            location: Parse::position_repr(input, self.max_err_pos.into()),
-            expected: self.expected,
-        }
+        new_parse_error(input, self.max_err_pos.into(), self.expected)
     }
 }

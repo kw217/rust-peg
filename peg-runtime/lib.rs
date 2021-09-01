@@ -14,8 +14,8 @@ pub enum RuleResult<T> {
     Matched(usize, T),
     /// Failure
     Failed,
-    /// Labelled error
-    Error(&'static str),
+    /// Labelled error at location
+    Error(&'static str, usize),
 }
 
 /// A type that can be used as input to a parser.

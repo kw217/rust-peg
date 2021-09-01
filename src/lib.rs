@@ -165,7 +165,7 @@
 //! in applications like IDEs.
 //!
 //! The `error!("something" e)` syntax reports an error with the given message at the current
-//! location, and then attempts to recover.
+//! location, and then attempts to recover by parsing `e`.
 //!
 //! * When an error is reported, no further alternatives are tried: parsing immediately stops
 //!   at this point (unlike ordinary failure which causes the parser to try other choices).

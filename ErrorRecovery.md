@@ -1,6 +1,6 @@
 peg-runtime: error.rs
 
-ErrorState is a whole lot of stuff: furthest error pos, suppressing?, reparsing?, current expected set.
+ErrorState is a whole lot of stuff: furthest failure pos, suppressing?, reparsing?, current expected set.
 
 peg-runtime: lib.rs
 
@@ -54,4 +54,27 @@ Beef up the tests or ensure they are well covered. >> looks OK to me; only one t
 
 
 See https://github.com/sqmedeiros/lpeglabel and https://arxiv.org/abs/1806.11150
+
+
+# Thoughts on the paper
+
+Notice that:
+
+* If the parse succeeds, it may or may not have a furthest failure. Furthest failure in this case can only be introduced by rep.1, indicating how far we got attempting to parse one more repetition.
+* If the parse fails, it may or may not have a furthest failure. It can only lose its furthest failure from not.2.
+* If the parse throws, it must always have a furthest failure.
+* There are just two rules - not.1 and not.2 - which do not propagate the furthest failure through in the obvious fashion.
+
+I think not.2 should set the furthest failure to the current location, rather than nothing at all. Parsing b with !b should yield "unexpected mismatch at column 1", not "unexpected".
+
+If the recovery expression fails or throws (throw.3), it seems appropriate to ignore the recovery expression and throw the original label. In particular, allowing it to fail could permit subsequent backtracking.
+
+Sérgio Medeiros in private communication suggests varying throw.2 and throw.3 to disable nested recovery expressions. This avoids cycles, at the cost of some power. We adopt this suggestion.
+
+I think seq.3, rep.4, and ord.5 (the only rules which combine a throw with something else) should all be consistent. They should set the furthest failure to the error location; a prior or alternate furthest failure is not very interesting. In other words, rep.4 should return `z` as the furthest failure.
+
+Errors are more interesting than failures, because they indicate a definite violation of an expectation.
+They always propagate immediately, unlike failures where backtracking is possible and we're only interested in which failure happened the furthest into the input.
+No such furthest-location logic is needed for errors.
+
 
