@@ -781,9 +781,9 @@ fn compile_expr(context: &Context, e: &SpannedExpr, result_used: bool) -> TokenS
         RecoverExpr(ref message, ref expr) => {
             let recover_res = compile_expr(context, expr, result_used);
             quote_spanned! { span => {
-                __err_state.mark_error(__input, __pos, #message);
-
                 if __err_state.suppress_fail == 0 {
+                    __err_state.mark_error(__input, __pos, #message);
+
                     __err_state.suppress_fail += 1;
                     let __recover_res = #recover_res;
                     __err_state.suppress_fail -= 1;

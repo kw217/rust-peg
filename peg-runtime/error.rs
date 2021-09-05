@@ -97,6 +97,7 @@ pub struct ErrorState<I: Parse + ?Sized> {
 
     /// The set of errors we have recovered from so far.
     pub errors: Vec<ParseError<<I as Parse>::PositionRepr>>,
+    @@@ just store (str, usize) - this will allow the ErrorState type to be simplified
 }
 
 // Not sure why this isn't derivable.

@@ -37,6 +37,8 @@
 //! functions. The call returns a `Result<T, ParseError>` carrying either the
 //! successfully parsed value returned by the rule, or a `ParseError` containing
 //! the failure position and the set of tokens expected there.
+@@@ how to make this back-compatible? Want it to return (Result<T, ParseError<L>>, Vec<(&'static str, L)>)
+@@@ That ParseError<> isn't quite right either since it gloms together failure and error; probably OK but not great.
 //!
 //! ## Example
 //!
@@ -125,7 +127,7 @@
 //!   * `expected!("something")` - fail to match, and report the specified string as expected
 //!     at the current location.
 //!   * `error!("something" e) - report error, then attempt to recover by matching the expression
-//!      or sequence `e` and returning its value.
+//!      or sequence `e` and returning its value. To disable recovery use `!()` as the expression.
 //!   * `precedence!{ ... }` - Parse infix, prefix, or postfix expressions by precedence climbing.
 //!     [(details)](#precedence-climbing)
 //!

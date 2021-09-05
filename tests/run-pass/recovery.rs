@@ -7,13 +7,13 @@ peg::parser!(grammar test_grammar() for str {
     rule number() = ['0'..='9']+
     pub rule prog()
         = "public" _ "class" _ name() _ "{" _ "public" _ "static" _ "void" _ "main" _ "(" _ "String" _ "[" _ "]" _ name() _ ")" _ block_stmt() _ "}" _
-    rule block_stmt() = "{" _ (stmt() _)* _ ("}" / error!("missing end of block" "xyzzy"))
+    rule block_stmt() = "{" _ (stmt() _)* _ ("}" / error!("missing end of block" skip_to_rcur()))
     rule skip_to_rcur() = (!"}" ("{" skip_to_rcur() / [^ '}']))* "}"
     rule stmt() = if_stmt() / while_stmt() / print_stmt() / dec_stmt() / assign_stmt() / block_stmt()
     rule if_stmt() = "if" _ "(" _ exp() _ ")" _ stmt() _ ("else" _ stmt() _)?
     rule while_stmt() = "while" _ "(" _ exp() _ ")" _ stmt()
     rule dec_stmt() = "int" _ name() _ ( "=" _ exp() _)? ";"
-    rule assign_stmt() = name() _ "=" _ exp() _ (";" / error!("missing semicolon in assignment" "xyzzy"))
+    rule assign_stmt() = name() _ "=" _ exp() _ (";" / error!("missing semicolon in assignment"))
     rule print_stmt() = "System.out.println" _ "(" _ exp() _ ")" _ ";"
     rule exp() = rel_exp() _ ("==" _ rel_exp() _)*
     rule rel_exp() = add_exp() _ ("<" _ add_exp() _)*
