@@ -4,18 +4,50 @@ pub mod error;
 mod slice;
 pub mod str;
 
+
+/// The public API of a parser.
+pub struct RuleResults<T, L> {
+    /// The result of the parse.
+    pub result: RuleResultEx2<T, L>,
+    /// All errors raised during the parse.
+    pub errors: Vec<error::ParseErr<L>>,
+}
+
+impl<T, L> RuleResults<T, L> {
+    /// @@@ compat conversion / ignore multiple errors
+    pub fn into_result(self) -> Result<T, error::ParseError<L>> {
+        match self.result {
+            RuleResultEx2::Matched(v) => Ok(v),
+            RuleResultEx2::Failed(e) => Err(e),
+            RuleResultEx2::Error(e) => Err(error::ParseError { location: e.location, expected: error::ExpectedSet::singleton(e.error) }),
+        }
+    }
+}
+
+/// @@@ Part of the public API of a parser.
+/// @@@ need a better name!
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum RuleResultEx2<T, L> {
+    /// Success
+    Matched(T),
+    /// Failure
+    Failed(error::ParseError<L>),
+    /// Labelled error at location
+    Error(error::ParseErr<L>),
+}
+
 /// The result type used internally in the parser.
 ///
 /// You'll only need this if implementing the `Parse*` traits for a custom input
-/// type. The public API of a parser adapts errors to `std::result::Result`.
+/// type. The public API of a parser @@@.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum RuleResult<T> {
-    /// Success
+    /// Success, with final location  @@@ really not clear why the location is here, but I think sometimes it's used?
     Matched(usize, T),
-    /// Failure
+    /// Failure (furthest failure location is not yet known)
     Failed,
     /// Labelled error at location
-    Error(&'static str, usize),
+    Error(error::ParseErr<usize>),
 }
 
 /// A type that can be used as input to a parser.

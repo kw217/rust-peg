@@ -37,8 +37,7 @@
 //! functions. The call returns a `Result<T, ParseError>` carrying either the
 //! successfully parsed value returned by the rule, or a `ParseError` containing
 //! the failure position and the set of tokens expected there.
-@@@ how to make this back-compatible? Want it to return (Result<T, ParseError<L>>, Vec<(&'static str, L)>)
-@@@ That ParseError<> isn't quite right either since it gloms together failure and error; probably OK but not great.
+//! @@@fixme types
 //!
 //! ## Example
 //!

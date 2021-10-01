@@ -376,6 +376,7 @@ fn compile_rule_export(context: &Context, rule: &Rule) -> TokenStream {
                         __err_state.mark_failure(__pos, "EOF");
                     }
                 }
+                @@@ FIXME HERE - return the new datatype instead
                 ::peg::RuleResult::Error(__e, __pos) => {
                     return Err(::peg::error::new_parse_error(__input, __pos, ::peg::error::ExpectedSet::singleton(__e)))
                 }

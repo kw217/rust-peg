@@ -45,6 +45,15 @@ impl Display for ExpectedSet {
     }
 }
 
+/// A single parse error (not a failure).
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Hash)]
+pub struct ParseErr<L> {
+    /// The location at which the error occurred.
+    pub location: L,
+    /// The error reported.
+    pub error: &'static str,
+}
+
 /// An error from a parse failure
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ParseError<L> {
@@ -56,9 +65,16 @@ pub struct ParseError<L> {
 }
 
 // TODO Make this a method
-pub fn new_parse_error<I: Parse + ?Sized>(input: &I, pos: usize, expected: ExpectedSet) -> ParseError<I::PositionRepr> {
+pub fn new_parse_error(location: usize, error: &'static str) -> ParseErr<usize> {
+    ParseErr {
+        location,
+        error,
+    }
+}
+
+pub fn new_parse_error_tmp<I: Parse + ?Sized>(input: &I, location: usize, expected: ExpectedSet) -> ParseError<I::PositionRepr> {
     ParseError {
-        location: input.position_repr(pos),
+        location: input.position_repr(location),
         expected,
     }
 }
@@ -80,7 +96,7 @@ impl<L: Display + Debug> ::std::error::Error for ParseError<L> {
 }
 
 #[doc(hidden)]
-pub struct ErrorState<I: Parse + ?Sized> {
+pub struct ErrorState {
     /// Furthest failure we've hit so far. Not relevant to errors.
     pub max_err_pos: usize,
 
@@ -96,19 +112,18 @@ pub struct ErrorState<I: Parse + ?Sized> {
     pub expected: ExpectedSet,
 
     /// The set of errors we have recovered from so far.
-    pub errors: Vec<ParseError<<I as Parse>::PositionRepr>>,
-    @@@ just store (str, usize) - this will allow the ErrorState type to be simplified
+    pub errors: Vec<ParseErr<usize>>,
 }
 
 // Not sure why this isn't derivable.
-impl<I: Parse + ?Sized> Debug for ErrorState<I> where <I as Parse>::PositionRepr : Debug {
+impl Debug for ErrorState {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
         write!(fmt, "ErrorState {{ max_err_pos: {:?}, suppress_fail: {:?}, reparsing_on_error: {:?}, expected: {:?}, errors: {:?} }}",
             self.max_err_pos, self.suppress_fail, self.reparsing_on_error, self.expected, self.errors)
     }
 }
 
-impl<I: Parse + ?Sized> ErrorState<I> {
+impl ErrorState {
     pub fn new(initial_pos: usize) -> Self {
         ErrorState {
             max_err_pos: initial_pos,
@@ -147,13 +162,19 @@ impl<I: Parse + ?Sized> ErrorState<I> {
 
     /// Flag an error.
     #[inline(always)]
-    pub fn mark_error(&mut self, input: &I, pos: usize, error: &'static str) {
+    pub fn mark_error(&mut self, pos: usize, error: &'static str) {
         if self.suppress_fail == 0 {
-            self.errors.push(new_parse_error(input, pos, ExpectedSet::singleton(error)));
+            self.errors.push(new_parse_error(pos, error));
         }
     }
 
-    pub fn into_parse_error(self, input: &I) -> ParseError<I::PositionRepr> {
-        new_parse_error(input, self.max_err_pos.into(), self.expected)
+    pub fn mark_error_tmp<I>(&mut self, _input: &I, pos: usize, error: &'static str) {
+        if self.suppress_fail == 0 {
+            self.errors.push(new_parse_error(pos, error));
+        }
+    }
+
+    pub fn into_parse_error_tmp<I: Parse + ?Sized>(self, input: &I) -> ParseError<I::PositionRepr> {
+        new_parse_error_tmp(input, self.max_err_pos.into(), self.expected)
     }
 }
