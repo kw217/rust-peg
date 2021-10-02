@@ -168,7 +168,7 @@ impl ErrorState {
         }
     }
 
-    pub fn mark_error_tmp<I>(&mut self, _input: &I, pos: usize, error: &'static str) {
+    pub fn mark_error_tmp<I: Parse + ?Sized>(&mut self, _input: &I, pos: usize, error: &'static str) {
         if self.suppress_fail == 0 {
             self.errors.push(new_parse_error(pos, error));
         }
