@@ -82,21 +82,6 @@ impl ParseError<usize> {
     }
 }
 
-// TODO Make this a method
-pub fn new_parse_error(location: usize, error: &'static str) -> ParseErr<usize> {
-    ParseErr {
-        location,
-        error,
-    }
-}
-
-pub fn new_parse_error_tmp<I: Parse + ?Sized>(input: &I, location: usize, expected: ExpectedSet) -> ParseError<I::PositionRepr> {
-    ParseError {
-        location: input.position_repr(location),
-        expected,
-    }
-}
-
 impl<L: Display> Display for ParseError<L> {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
         write!(
@@ -188,15 +173,9 @@ impl ErrorState {
 
     /// Flag an error.
     #[inline(always)]
-    pub fn mark_error(&mut self, pos: usize, error: &'static str) {
+    pub fn mark_error(&mut self, location: usize, error: &'static str) {
         if self.suppress_fail == 0 {
-            self.errors.push(new_parse_error(pos, error));
-        }
-    }
-
-    pub fn mark_error_tmp<I: Parse + ?Sized>(&mut self, _input: &I, pos: usize, error: &'static str) {
-        if self.suppress_fail == 0 {
-            self.errors.push(new_parse_error(pos, error));
+            self.errors.push(ParseErr { location, error });
         }
     }
 
@@ -208,10 +187,6 @@ impl ErrorState {
             }),
             errors: errors_positioned_in(self.errors, input),
         }
-    }
-
-    pub fn into_parse_error_tmp<I: Parse + ?Sized>(self, input: &I) -> ParseError<I::PositionRepr> {
-        new_parse_error_tmp(input, self.max_err_pos.into(), self.expected)
     }
 
     pub fn errors_positioned_in<I: Parse + ?Sized>(self, input: &I) -> Vec<ParseErr<I::PositionRepr>> {
