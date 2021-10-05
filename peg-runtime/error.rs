@@ -1,6 +1,6 @@
 //! Parse error reporting
 
-use crate::{Parse, RuleResult};
+use crate::{Parse, RuleResult, RuleResults, RuleResultEx2};
 use std::collections::HashSet;
 use std::fmt::{self, Debug, Display};
 
@@ -54,6 +54,15 @@ pub struct ParseErr<L> {
     pub error: &'static str,
 }
 
+impl ParseErr<usize> {
+    pub fn positioned_in<I: Parse + ?Sized>(self, input: &I) -> ParseErr<I::PositionRepr> {
+        ParseErr {
+            location: input.position_repr(self.location),
+            error: self.error,
+        }
+    }
+}
+
 /// An error from a parse failure
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ParseError<L> {
@@ -62,6 +71,15 @@ pub struct ParseError<L> {
 
     /// The set of literals that failed to match at that position
     pub expected: ExpectedSet,
+}
+
+impl ParseError<usize> {
+    pub fn positioned_in<I: Parse + ?Sized>(self, input: &I) -> ParseError<I::PositionRepr> {
+        ParseError {
+            location: input.position_repr(self.location),
+            expected: self.expected,
+        }
+    }
 }
 
 // TODO Make this a method
@@ -93,6 +111,14 @@ impl<L: Display + Debug> ::std::error::Error for ParseError<L> {
     fn description(&self) -> &str {
         "parse error"
     }
+}
+
+pub fn errors_positioned_in<I: Parse + ?Sized>(errors: Vec<ParseErr<usize>>, input: &I) -> Vec<ParseErr<I::PositionRepr>> {
+    let mut errors_ret = vec![];
+    for error in errors {
+        errors_ret.push(error.positioned_in(input))
+    }
+    errors_ret
 }
 
 #[doc(hidden)]
@@ -174,7 +200,21 @@ impl ErrorState {
         }
     }
 
+    pub fn into_failure<T, I: Parse + ?Sized>(self, input: &I) -> RuleResults<T, I::PositionRepr> {
+        RuleResults {
+            result: RuleResultEx2::Failed(ParseError {
+                expected: self.expected,
+                location: input.position_repr(self.max_err_pos)
+            }),
+            errors: errors_positioned_in(self.errors, input),
+        }
+    }
+
     pub fn into_parse_error_tmp<I: Parse + ?Sized>(self, input: &I) -> ParseError<I::PositionRepr> {
         new_parse_error_tmp(input, self.max_err_pos.into(), self.expected)
+    }
+
+    pub fn errors_positioned_in<I: Parse + ?Sized>(self, input: &I) -> Vec<ParseErr<I::PositionRepr>> {
+        errors_positioned_in(self.errors, input)
     }
 }

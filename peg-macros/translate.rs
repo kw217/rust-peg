@@ -371,13 +371,13 @@ fn compile_rule_export(context: &Context, rule: &Rule) -> TokenStream {
             match #parse_fn(__input, &mut __state, &mut __err_state, ::peg::Parse::start(__input) #extra_args_call #(, #rule_params_call)*) {
                 ::peg::RuleResult::Matched(__pos, __value) => {
                     if #eof_check {
-                        return Ok(__value)
+                        return ::peg::RuleResults { result: ::peg::RuleResultEx2::Matched(__value), errors: __err_state.errors_positioned_in(__input) }.into_result()
                     } else {
                         __err_state.mark_failure(__pos, "EOF");
                     }
                 }
                 ::peg::RuleResult::Error(__e) => {
-                    return Err(::peg::error::new_parse_error_tmp(__input, __e.location, ::peg::error::ExpectedSet::singleton(__e.error)))
+                    return ::peg::RuleResults { result: ::peg::RuleResultEx2::Error(__e.positioned_in(__input)), errors: __err_state.errors_positioned_in(__input) }.into_result()
                 }
                 ::peg::RuleResult::Failed => ()
             }
@@ -396,7 +396,7 @@ fn compile_rule_export(context: &Context, rule: &Rule) -> TokenStream {
                 _ => ()
             }
 
-            Err(__err_state.into_parse_error_tmp(__input))
+            __err_state.into_failure(__input).into_result()
         }
     }
 }
@@ -462,7 +462,7 @@ fn compile_literal_expr(s: &Literal, continuation: TokenStream) -> TokenStream {
     quote_spanned! { span =>
             match ::peg::ParseLiteral::parse_string_literal(__input, __pos, #s) {
             ::peg::RuleResult::Matched(__pos, __val) => { #continuation }
-            ::peg::RuleResult::Error(__e) => { __err_state.mark_error_tmp(__input, __e.location, __e.error); ::peg::RuleResult::Error(__e) }  // unexpected, but do something sensible
+            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__e.location, __e.error); ::peg::RuleResult::Error(__e) }  // unexpected, but do something sensible
             ::peg::RuleResult::Failed => { __err_state.mark_failure(__pos, #escaped_str); ::peg::RuleResult::Failed }
         }
     }
@@ -486,7 +486,7 @@ fn compile_pattern_expr(pattern_group: &Group, success_res: TokenStream) -> Toke
                 _ => #not_in_set,
             }
             ::peg::RuleResult::Failed => { __err_state.mark_failure(__pos, #pat_str); ::peg::RuleResult::Failed },
-            ::peg::RuleResult::Error(__e) => { __err_state.mark_error_tmp(__input, __e.location, __e.error); ::peg::RuleResult::Error(__e) },  // unexpected, but do something sensible
+            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__e.location, __e.error); ::peg::RuleResult::Error(__e) },  // unexpected, but do something sensible
         }
     }
 }
