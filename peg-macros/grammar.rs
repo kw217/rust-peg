@@ -35,21 +35,13 @@ pub mod peg {
         ) {
             ::peg::RuleResult::Matched(__pos, __value) => {
                 if ::peg::Parse::is_eof(__input, __pos) {
-                    return ::peg::RuleResults {
-                        result: ::peg::RuleResultEx2::Matched(__value),
-                        errors: __err_state.errors_positioned_in(__input),
-                    }
-                    .into_result();
+                    return __err_state.into_matched(__value, __input).into_result();
                 } else {
                     __err_state.mark_failure(__pos, "EOF");
                 }
             }
             ::peg::RuleResult::Error(__e) => {
-                return ::peg::RuleResults {
-                    result: ::peg::RuleResultEx2::Error(__e.positioned_in(__input)),
-                    errors: __err_state.errors_positioned_in(__input),
-                }
-                .into_result()
+                return __err_state.into_error(__e, __input).into_result()
             }
             ::peg::RuleResult::Failed => (),
         }

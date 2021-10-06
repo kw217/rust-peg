@@ -371,13 +371,13 @@ fn compile_rule_export(context: &Context, rule: &Rule) -> TokenStream {
             match #parse_fn(__input, &mut __state, &mut __err_state, ::peg::Parse::start(__input) #extra_args_call #(, #rule_params_call)*) {
                 ::peg::RuleResult::Matched(__pos, __value) => {
                     if #eof_check {
-                        return ::peg::RuleResults { result: ::peg::RuleResultEx2::Matched(__value), errors: __err_state.errors_positioned_in(__input) }.into_result()
+                        return __err_state.into_matched(__value, __input).into_result()
                     } else {
                         __err_state.mark_failure(__pos, "EOF");
                     }
                 }
                 ::peg::RuleResult::Error(__e) => {
-                    return ::peg::RuleResults { result: ::peg::RuleResultEx2::Error(__e.positioned_in(__input)), errors: __err_state.errors_positioned_in(__input) }.into_result()
+                    return __err_state.into_error(__e, __input).into_result()
                 }
                 ::peg::RuleResult::Failed => ()
             }

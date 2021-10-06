@@ -17,7 +17,7 @@ impl ExpectedSet {
     }
 
     /// Construct a new singleton set.
-    pub fn singleton(error: &'static str) -> Self {
+    pub(crate) fn singleton(error: &'static str) -> Self {
         let mut expected = HashSet::new();
         expected.insert(error);
         ExpectedSet { expected }
@@ -54,16 +54,7 @@ pub struct ParseErr<L> {
     pub error: &'static str,
 }
 
-impl ParseErr<usize> {
-    pub fn positioned_in<I: Parse + ?Sized>(self, input: &I) -> ParseErr<I::PositionRepr> {
-        ParseErr {
-            location: input.position_repr(self.location),
-            error: self.error,
-        }
-    }
-}
-
-/// An error from a parse failure
+/// A parse failure.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ParseError<L> {
     /// The furthest position the parser reached in the input
@@ -71,15 +62,6 @@ pub struct ParseError<L> {
 
     /// The set of literals that failed to match at that position
     pub expected: ExpectedSet,
-}
-
-impl ParseError<usize> {
-    pub fn positioned_in<I: Parse + ?Sized>(self, input: &I) -> ParseError<I::PositionRepr> {
-        ParseError {
-            location: input.position_repr(self.location),
-            expected: self.expected,
-        }
-    }
 }
 
 impl<L: Display> Display for ParseError<L> {
@@ -96,14 +78,6 @@ impl<L: Display + Debug> ::std::error::Error for ParseError<L> {
     fn description(&self) -> &str {
         "parse error"
     }
-}
-
-pub fn errors_positioned_in<I: Parse + ?Sized>(errors: Vec<ParseErr<usize>>, input: &I) -> Vec<ParseErr<I::PositionRepr>> {
-    let mut errors_ret = vec![];
-    for error in errors {
-        errors_ret.push(error.positioned_in(input))
-    }
-    errors_ret
 }
 
 #[doc(hidden)]
@@ -153,7 +127,7 @@ impl ErrorState {
     }
 
     #[inline(never)]
-    pub fn mark_failure_slow_path(&mut self, pos: usize, expected: &'static str) {
+    fn mark_failure_slow_path(&mut self, pos: usize, expected: &'static str) {
         if pos == self.max_err_pos {
             self.expected.expected.insert(expected);
         }
@@ -179,6 +153,13 @@ impl ErrorState {
         }
     }
 
+    pub fn into_matched<T, I: Parse + ?Sized>(self, v: T, input: &I) -> RuleResults<T, I::PositionRepr> {
+        RuleResults {
+            result: RuleResultEx2::Matched(v),
+            errors: errors_positioned_in(self.errors, input),
+        }
+    }
+
     pub fn into_failure<T, I: Parse + ?Sized>(self, input: &I) -> RuleResults<T, I::PositionRepr> {
         RuleResults {
             result: RuleResultEx2::Failed(ParseError {
@@ -189,7 +170,21 @@ impl ErrorState {
         }
     }
 
-    pub fn errors_positioned_in<I: Parse + ?Sized>(self, input: &I) -> Vec<ParseErr<I::PositionRepr>> {
-        errors_positioned_in(self.errors, input)
+    pub fn into_error<T, I: Parse + ?Sized>(self, error: ParseErr<usize>, input: &I) -> RuleResults<T, I::PositionRepr> {
+        RuleResults {
+            result: RuleResultEx2::Error(ParseErr {
+                location: input.position_repr(error.location),
+                error: error.error,
+            }),
+            errors: errors_positioned_in(self.errors, input),
+        }
     }
+}
+
+fn errors_positioned_in<I: Parse + ?Sized>(errors: Vec<ParseErr<usize>>, input: &I) -> Vec<ParseErr<I::PositionRepr>> {
+    let mut errors_ret = vec![];
+    for error in errors {
+        errors_ret.push(ParseErr { location: input.position_repr(error.location), error: error.error })
+    }
+    errors_ret
 }
