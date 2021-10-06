@@ -6,26 +6,32 @@ pub mod str;
 
 
 /// The public API of a parser.
+// @@@ fix name
 pub struct RuleResults<T, L> {
     /// The result of the parse.
     pub result: RuleResultEx2<T, L>,
-    /// All errors raised during the parse.
+    /// The set of errors we recovered from during the parse.
     pub errors: Vec<error::ParseErr<L>>,
 }
 
 impl<T, L> RuleResults<T, L> {
-    /// @@@ compat conversion / ignore multiple errors
+    /// Convert into a simple `Result`, ignoring any recovered errors.
     pub fn into_result(self) -> Result<T, error::ParseError<L>> {
         match self.result {
             RuleResultEx2::Matched(v) => Ok(v),
             RuleResultEx2::Failed(e) => Err(e),
-            RuleResultEx2::Error(e) => Err(error::ParseError { location: e.location, expected: error::ExpectedSet::singleton(e.error) }),
+            RuleResultEx2::Error(e) => Err(
+                error::ParseError {
+                    location: e.location,
+                    expected: error::ExpectedSet::singleton(e.error)
+                }
+            ),
         }
     }
 }
 
-/// @@@ Part of the public API of a parser.
-/// @@@ need a better name!
+/// The public result of a parser.
+// @@@ fix name
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum RuleResultEx2<T, L> {
     /// Success
@@ -39,10 +45,11 @@ pub enum RuleResultEx2<T, L> {
 /// The result type used internally in the parser.
 ///
 /// You'll only need this if implementing the `Parse*` traits for a custom input
-/// type. The public API of a parser @@@.
+/// type.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum RuleResult<T> {
-    /// Success, with final location  @@@ really not clear why the location is here, but I think sometimes it's used?
+    /// Success, with final location
+    // @@@ really not clear why the location is here, but I think sometimes it's used?
     Matched(usize, T),
     /// Failure (furthest failure location is not yet known)
     Failed,

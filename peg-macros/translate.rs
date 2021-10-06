@@ -383,7 +383,7 @@ fn compile_rule_export(context: &Context, rule: &Rule) -> TokenStream {
             }
 
             __state = ParseState::new();
-            __err_state.reparse_for_error();
+            __err_state.reparse_for_failure();
 
             match #parse_fn(__input, &mut __state, &mut __err_state, ::peg::Parse::start(__input) #extra_args_call #(, #rule_params_call)*) {
                 ::peg::RuleResult::Matched(__pos, __value) => {
