@@ -1,6 +1,6 @@
 //! Parse error reporting
 
-use crate::{Parse, RuleResult, RuleResults, RuleResultEx2};
+use crate::{Parse, RuleResult, ParseResults, ParseResult};
 use std::collections::HashSet;
 use std::fmt::{self, Debug, Display};
 
@@ -46,7 +46,6 @@ impl Display for ExpectedSet {
 }
 
 /// A parse error.
-// @@@ name?
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Hash)]
 pub struct ParseErr<L> {
     /// The location at which the error occurred.
@@ -157,17 +156,17 @@ impl ErrorState {
     }
 
     /// Build `Matched` parse result.
-    pub fn into_matched<T, I: Parse + ?Sized>(self, v: T, input: &I) -> RuleResults<T, I::PositionRepr> {
-        RuleResults {
-            result: RuleResultEx2::Matched(v),
+    pub fn into_matched<T, I: Parse + ?Sized>(self, v: T, input: &I) -> ParseResults<T, I::PositionRepr> {
+        ParseResults {
+            result: ParseResult::Matched(v),
             errors: errors_positioned_in(self.errors, input),
         }
     }
 
     /// Build `Failed` parse result.
-    pub fn into_failure<T, I: Parse + ?Sized>(self, input: &I) -> RuleResults<T, I::PositionRepr> {
-        RuleResults {
-            result: RuleResultEx2::Failed(ParseError {
+    pub fn into_failure<T, I: Parse + ?Sized>(self, input: &I) -> ParseResults<T, I::PositionRepr> {
+        ParseResults {
+            result: ParseResult::Failed(ParseError {
                 expected: self.expected,
                 location: input.position_repr(self.max_err_pos)
             }),
@@ -176,9 +175,9 @@ impl ErrorState {
     }
 
     /// Build `Error` parse result.
-    pub fn into_error<T, I: Parse + ?Sized>(self, error: ParseErr<usize>, input: &I) -> RuleResults<T, I::PositionRepr> {
-        RuleResults {
-            result: RuleResultEx2::Error(ParseErr {
+    pub fn into_error<T, I: Parse + ?Sized>(self, error: ParseErr<usize>, input: &I) -> ParseResults<T, I::PositionRepr> {
+        ParseResults {
+            result: ParseResult::Error(ParseErr {
                 location: input.position_repr(error.location),
                 error: error.error,
             }),
