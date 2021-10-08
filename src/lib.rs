@@ -189,7 +189,8 @@
 //! and [Sérgio Queiroz de Medeiros, Gilney de Azevedo Alvez Junior, and Fabio Mascarenhas,
 //! _Automatic Syntax Error Reporting and Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1905.02145).
 //! Tracking the furthest failure position is simplified by observing that an error
-//! is always reported over a failure even if a previous failure was further through the input.
+//! is always reported over a failure even if a previous failure was further through the input;
+//! thus there is no need to track the error location separately.
 //! `rust-peg` treats failure or error of a recovery expression differently than Medeiros and
 //! Mascarenhas - we report the original error (as if there was no recovery expression),
 //! whereas Medeiros and Mascarenhas report the failure or error of the recovery expression.
