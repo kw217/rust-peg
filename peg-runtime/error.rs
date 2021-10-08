@@ -45,16 +45,19 @@ impl Display for ExpectedSet {
     }
 }
 
-/// A parse error.
+/// An error from a parse error.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Hash)]
 pub struct ParseErr<L> {
     /// The location at which the error occurred.
     pub location: L,
+
     /// The error reported.
     pub error: &'static str,
 }
 
-/// A parse failure.
+impl Copy for ParseErr<usize> {}
+
+/// An error from a parse failure.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ParseError<L> {
     /// The furthest position the parser reached in the input
@@ -81,8 +84,9 @@ impl<L: Display + Debug> ::std::error::Error for ParseError<L> {
 }
 
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct ErrorState {
-    /// Furthest failure we've hit so far. Not relevant to errors.
+    /// Furthest failure we've hit so far. Not used for parse errors.
     pub max_err_pos: usize,
 
     /// Are we inside a lookahead/quiet block? If so, failure/error and recovery rules are disabled.
@@ -90,22 +94,14 @@ pub struct ErrorState {
     pub suppress_fail: usize,
 
     /// Are we reparsing after a failure? If so, compute and store expected set of all alternative expectations
-    /// when we are at offset `max_err_pos`. Not required for errors.
+    /// when we are at offset `max_err_pos`. Not used for parse errors.
     pub reparsing_on_failure: bool,
 
     /// The set of tokens we expected to find when we hit the failure. Updated when `reparsing_on_failure`.
     pub expected: ExpectedSet,
 
-    /// The set of errors we have recovered from so far.
+    /// The set of parse errors we have recovered from so far.
     pub errors: Vec<ParseErr<usize>>,
-}
-
-// Not sure why this isn't derivable.
-impl Debug for ErrorState {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
-        write!(fmt, "ErrorState {{ max_err_pos: {:?}, suppress_fail: {:?}, reparsing_on_failure: {:?}, expected: {:?}, errors: {:?} }}",
-            self.max_err_pos, self.suppress_fail, self.reparsing_on_failure, self.expected, self.errors)
-    }
 }
 
 impl ErrorState {
@@ -149,9 +145,9 @@ impl ErrorState {
 
     /// Flag an error.
     #[inline(always)]
-    pub fn mark_error(&mut self, location: usize, error: &'static str) {
+    pub fn mark_error(&mut self, error: ParseErr<usize>) {
         if self.suppress_fail == 0 {
-            self.errors.push(ParseErr { location, error });
+            self.errors.push(error);
         }
     }
 

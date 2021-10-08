@@ -34,10 +34,17 @@
 //!
 //! The macro expands to a Rust `mod` containing a function for each rule marked
 //! `pub` in the grammar. To parse an input sequence, call one of these
-//! functions. The call returns a `Result<T, ParseError>` carrying either the
-//! successfully parsed value returned by the rule, or a `ParseError` containing
-//! the failure position and the set of tokens expected there.
-//! @@@fixme types
+//! functions. The call returns a `ParseResults<T,L>`. This contains a
+//! `ParseResult<T,L>` which carries either the successfully parsed value
+//! returned by the rule, a `ParseError<L>` containing
+//! the failure position and the set of tokens expected there, or a `ParseErr<L>`
+//! containing an error position and the corresponding message.
+//! The `ParseResults<T,L>` also carries the set of errors which have been
+//! recovered from (if any).
+//!
+//! If multiple error reporting is not required, `.into_result()` converts the
+//! rule's return value into a `Result<T, ParseError<L>>` which carries either
+//! the successfully parsed value or a failure/error location and message.
 //!
 //! ## Example
 //!
@@ -125,8 +132,8 @@
 //!     error messages.
 //!   * `expected!("something")` - fail to match, and report the specified string as expected
 //!     at the current location.
-//!   * `error!("something" e) - report error, then attempt to recover by matching the expression
-//!      or sequence `e` and returning its value. To disable recovery use `!()` as the expression.
+//!   * `error!("message" e) - report error, then attempt to recover by matching the expression
+//!      or sequence `e` and returning its value. If recovery is not required, use `!()` as the expression.
 //!   * `precedence!{ ... }` - Parse infix, prefix, or postfix expressions by precedence climbing.
 //!     [(details)](#precedence-climbing)
 //!
@@ -165,27 +172,27 @@
 //! a sensible parse of most of the input even when there are errors. These are both very important
 //! in applications like IDEs.
 //!
-//! The `error!("something" e)` syntax reports an error with the given message at the current
-//! location, and then attempts to recover by parsing `e`.
+//! The `error!("message" e)` syntax reports an error with the given message at the current
+//! location, and then attempts to recover by parsing `e` instead.
 //!
 //! * When an error is reported, no further alternatives are tried: parsing immediately stops
 //!   at this point (unlike ordinary failure which causes the parser to try other choices).
 //! * The reported error is added to the list of errors.
-//! * Then the parser attempts to continue by matching the recovery sequence.
+//! * Then the parser attempts to continue by matching the recovery expression.
 //!   The resulting value is returned as the result of the `error!` expression;
 //!   typically this is just a placeholder value of the right type.
 //!   If the recovery expression fails or encounters an error, recovery is abandoned
-//!   and the `error!` expression returns the indicated error (`"something"`).
+//!   and the `error!` expression returns the indicated error (`"message"`).
 //!
 //! This mechanism is based on [Sérgio Medeiros and Fabio Mascarenhas,
 //! _Syntax Error Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1806.11150)
 //! and [Sérgio Queiroz de Medeiros, Gilney de Azevedo Alvez Junior, and Fabio Mascarenhas,
-//! _Automatic Syntax Error Reporting and Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1905.02145)
+//! _Automatic Syntax Error Reporting and Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1905.02145).
 //! Tracking the furthest failure position is simplified by observing that an error
 //! is always reported over a failure even if a previous failure was further through the input.
 //! `rust-peg` treats failure or error of a recovery expression differently than Medeiros and
 //! Mascarenhas - we report the original error (as if there was no recovery expression),
-//! whereas Medeiros and Mascarenhas pass through the failure or error of the recovery expression.
+//! whereas Medeiros and Mascarenhas report the failure or error of the recovery expression.
 //!
 //! ### Precedence climbing
 //!

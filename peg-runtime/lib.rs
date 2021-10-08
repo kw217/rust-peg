@@ -10,6 +10,7 @@ pub mod str;
 pub struct ParseResults<T, L> {
     /// The result of the parse.
     pub result: ParseResult<T, L>,
+
     /// The set of errors we recovered from during the parse.
     pub errors: Vec<error::ParseErr<L>>,
 }
@@ -36,8 +37,10 @@ impl<T, L> ParseResults<T, L> {
 pub enum ParseResult<T, L> {
     /// Success
     Matched(T),
+
     /// Failure
     Failed(error::ParseError<L>),
+
     /// Labelled error at location
     Error(error::ParseErr<L>),
 }
@@ -50,8 +53,10 @@ pub enum ParseResult<T, L> {
 pub enum RuleResult<T> {
     /// Success, with final location
     Matched(usize, T),
+
     /// Failure (furthest failure location is not yet known)
     Failed,
+
     /// Labelled error at location
     Error(error::ParseErr<usize>),
 }

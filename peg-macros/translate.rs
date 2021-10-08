@@ -462,7 +462,7 @@ fn compile_literal_expr(s: &Literal, continuation: TokenStream) -> TokenStream {
     quote_spanned! { span =>
             match ::peg::ParseLiteral::parse_string_literal(__input, __pos, #s) {
             ::peg::RuleResult::Matched(__pos, __val) => { #continuation }
-            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__e.location, __e.error); ::peg::RuleResult::Error(__e) }  // unexpected, but do something sensible
+            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__e); ::peg::RuleResult::Error(__e) }  // unexpected, but do something sensible
             ::peg::RuleResult::Failed => { __err_state.mark_failure(__pos, #escaped_str); ::peg::RuleResult::Failed }
         }
     }
@@ -486,7 +486,7 @@ fn compile_pattern_expr(pattern_group: &Group, success_res: TokenStream) -> Toke
                 _ => #not_in_set,
             }
             ::peg::RuleResult::Failed => { __err_state.mark_failure(__pos, #pat_str); ::peg::RuleResult::Failed },
-            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__e.location, __e.error); ::peg::RuleResult::Error(__e) },  // unexpected, but do something sensible
+            ::peg::RuleResult::Error(__e) => { __err_state.mark_error(__e); ::peg::RuleResult::Error(__e) },  // unexpected, but do something sensible
         }
     }
 }
@@ -782,7 +782,8 @@ fn compile_expr(context: &Context, e: &SpannedExpr, result_used: bool) -> TokenS
             let recover_res = compile_expr(context, expr, result_used);
             quote_spanned! { span => {
                 if __err_state.suppress_fail == 0 {
-                    __err_state.mark_error(__pos, #message);
+                    let __parse_err = ::peg::error::ParseErr { error: #message, location: __pos };
+                    __err_state.mark_error(__parse_err);
 
                     __err_state.suppress_fail += 1;
                     let __recover_res = #recover_res;
@@ -790,7 +791,7 @@ fn compile_expr(context: &Context, e: &SpannedExpr, result_used: bool) -> TokenS
 
                     match __recover_res {
                         ::peg::RuleResult::Matched(__newpos, __value) => ::peg::RuleResult::Matched(__newpos, __value),
-                        ::peg::RuleResult::Failed | ::peg::RuleResult::Error(..) => ::peg::RuleResult::Error(::peg::error::ParseErr { error: #message, location: __pos })
+                        ::peg::RuleResult::Failed | ::peg::RuleResult::Error(..) => ::peg::RuleResult::Error(__parse_err)
                     }
                 } else {
                     ::peg::RuleResult::Error(::peg::error::ParseErr { error: #message, location: __pos })
