@@ -60,7 +60,7 @@
 //! }
 //!
 //! pub fn main() {
-//!     assert_eq!(list_parser::list("[1,1,2,3,5,8]"), Ok(vec![1, 1, 2, 3, 5, 8]));
+//!     assert_eq!(list_parser::list("[1,1,2,3,5,8]").into_result(), Ok(vec![1, 1, 2, 3, 5, 8]));
 //! }
 //! ```
 //!
@@ -167,8 +167,8 @@
 //!
 //! Errors support recovery: the ability to report an error but continue to parse the rest of the
 //! input anyway. This allows the parser to report more than one error at once, and to provide
-//! a sensible parse of most of the input even when there are errors. These are both very important
-//! in applications like IDEs.
+//! a sensible parse of most of the input even when there are errors.
+//! These are useful in applications like IDEs.
 //!
 //! The `error!("message" e)` syntax reports an error with the given message at the current
 //! location, and then attempts to recover by parsing `e` instead.
@@ -254,7 +254,7 @@
 //!
 //! [gh-flat-token-tree]: https://github.com/kevinmehall/rust-peg/blob/master/peg-macros/tokens.rs
 //!
-//! ## Error reporting
+//! ## Failure reporting
 //!
 //! When a match fails, position information is automatically recorded to report a set of
 //! "expected" tokens that would have allowed the parser to advance further.
