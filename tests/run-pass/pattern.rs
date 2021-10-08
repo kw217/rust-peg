@@ -4,9 +4,9 @@ peg::parser!( grammar test() for str {
 });
 
 fn main() {
-    assert!(test::alphanumeric("azAZ09").is_ok());
-    assert!(test::alphanumeric("@").is_err());
+    assert!(test::alphanumeric("azAZ09").into_result().is_ok());
+    assert!(test::alphanumeric("@").into_result().is_err());
 
-    assert_eq!(test::inverted_pat("(asdf)"), Ok("asdf"));
+    assert_eq!(test::inverted_pat("(asdf)").into_result(), Ok("asdf"));
 }
 
