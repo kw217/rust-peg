@@ -45,13 +45,13 @@ impl Display for ExpectedSet {
     }
 }
 
-/// An error from a parse error.
+/// A parse error raised by an `error!` expression.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Hash)]
 pub struct ParseErr<L> {
     /// The location at which the error occurred.
     pub location: L,
 
-    /// The error reported.
+    /// The error reported at that location.
     pub error: &'static str,
 }
 
@@ -67,13 +67,13 @@ impl<L: Display> Display for ParseErr<L> {
     }
 }
 
-/// An error from a parse failure.
+/// A parse failure.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ParseError<L> {
-    /// The furthest position the parser reached in the input
+    /// The furthest position the parser reached in the input before failing.
     pub location: L,
 
-    /// The set of literals that failed to match at that position
+    /// The set of literals that failed to match at that position.
     pub expected: ExpectedSet,
 }
 

@@ -31,7 +31,7 @@ peg::parser!{
 }
 
 pub fn main() {
-    assert_eq!(list_parser::list("[1,1,2,3,5,8]"), Ok(vec![1, 1, 2, 3, 5, 8]));
+    assert_eq!(list_parser::list("[1,1,2,3,5,8]").into_result(), Ok(vec![1, 1, 2, 3, 5, 8]));
 }
 ```
 
@@ -40,12 +40,12 @@ pub fn main() {
 
 ## Comparison with similar parser generators
 
-| crate     	| parser type 	| action code 	| integration        	| input type             	| precedence climbing 	| parameterized rules 	| streaming input 	|
-|-----------	|-------------	|-------------	|--------------------	|------------------------	|---------------------	|--------------------	|-----------------	|
-| peg       	| PEG         	| in grammar  	| proc macro (block) 	| `&str`, `&[T]`, custom 	| Yes                 	| Yes                	| No              	|
-| [pest]    	| PEG         	| external    	| proc macro (file)  	| `&str`                 	| Yes                 	| No                 	| No              	|
-| [nom]     	| combinators 	| in source   	| library            	| `&[u8]`, custom        	| No                  	| Yes                	| Yes             	|
-| [lalrpop] 	| LR(1)       	| in grammar  	| build script       	| `&str`                 	| No                  	| Yes                	| No              	|
+| crate     	| parser type 	| action code 	| integration        	| input type             	| precedence climbing 	| parameterized rules | streaming input 	| recovery |
+|-----------	|-------------	|-------------	|--------------------	|------------------------	|---------------------	|--------------------	|-----------------	|--------- |
+| peg       	| PEG         	| in grammar  	| proc macro (block) 	| `&str`, `&[T]`, custom 	| Yes                 	| Yes                	| No              	| Yes      |
+| [pest]    	| PEG         	| external    	| proc macro (file)  	| `&str`                 	| Yes                 	| No                 	| No              	| No       |
+| [nom]     	| combinators 	| in source   	| library            	| `&[u8]`, custom        	| No                  	| Yes                	| Yes             	| No       |
+| [lalrpop] 	| LR(1)       	| in grammar  	| build script       	| `&str`                 	| No                  	| Yes                	| No              	| Yes      |
 
 [pest]: https://github.com/pest-parser/pest
 [nom]: https://github.com/geal/nom

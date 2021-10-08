@@ -34,17 +34,15 @@
 //!
 //! The macro expands to a Rust `mod` containing a function for each rule marked
 //! `pub` in the grammar. To parse an input sequence, call one of these
-//! functions. The call returns a `ParseResults<T,L>`. This contains a
-//! `ParseResult<T,L>` which carries either the successfully parsed value
-//! returned by the rule, a `ParseError<L>` containing
-//! the failure position and the set of tokens expected there, or a `ParseErr<L>`
-//! containing an error position and the corresponding message.
-//! The `ParseResults<T,L>` also carries the set of errors which have been
-//! recovered from (if any).
+//! functions. The call returns a `ParseResults<T,L>`, which carries either the
+//! successfully parsed value, the furthest failure, or an error, along with the
+//! set of errors which have been recovered from (if any).
 //!
-//! If multiple error reporting is not required, `.into_result()` converts the
-//! rule's return value into a `Result<T, ParseError<L>>` which carries either
-//! the successfully parsed value or a failure/error location and message.
+//! * Use `unwrap()` to obtain the successful `T` or panic.
+//! * Use `into_result()` to obtain a `Result<T, _>`.
+//!   Failures and errors are combined.
+//! * For full details, match on the `result` field and examine the set of
+//!   recovered errors in the `errors` field.
 //!
 //! ## Example
 //!
