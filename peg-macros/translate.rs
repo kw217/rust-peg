@@ -371,7 +371,7 @@ fn compile_rule_export(context: &Context, rule: &Rule) -> TokenStream {
 
     quote_spanned! { span =>
         #doc
-        #visibility fn #name<'input #(, #grammar_lifetime_params)* #(, #ty_params)*>(__input: #input_ty #extra_args_def #(, #rule_params)*) -> ::std::result::Result<#ret_ty, ::peg::error::ParseError<PositionRepr<#(#grammar_lifetime_params),*>>> {
+        #visibility fn #name<'input #(, #grammar_lifetime_params)* #(, #ty_params)*>(__input: #input_ty #extra_args_def #(, #rule_params)*) -> ::peg::ParseResults<#ret_ty, PositionRepr<#(#grammar_lifetime_params),*>> {
             #![allow(non_snake_case, unused)]
 
             let mut __err_state = ::peg::error::ErrorState::new(::peg::Parse::start(__input));
@@ -379,13 +379,13 @@ fn compile_rule_export(context: &Context, rule: &Rule) -> TokenStream {
             match #parse_fn(__input, &mut __state, &mut __err_state, ::peg::Parse::start(__input) #extra_args_call #(, #rule_params_call)*) {
                 ::peg::RuleResult::Matched(__pos, __value) => {
                     if #eof_check {
-                        return __err_state.into_matched(__value, __input).into_result()
+                        return __err_state.into_matched(__value, __input)
                     } else {
                         __err_state.mark_failure(__pos, "EOF");
                     }
                 }
                 ::peg::RuleResult::Error(__e) => {
-                    return __err_state.into_error(__e, __input).into_result()
+                    return __err_state.into_error(__e, __input)
                 }
                 ::peg::RuleResult::Failed => ()
             }
@@ -404,7 +404,7 @@ fn compile_rule_export(context: &Context, rule: &Rule) -> TokenStream {
                 _ => ()
             }
 
-            __err_state.into_failure(__input).into_result()
+            __err_state.into_failure(__input)
         }
     }
 }

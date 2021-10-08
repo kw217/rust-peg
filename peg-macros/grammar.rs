@@ -23,7 +23,7 @@ pub mod peg {
     use proc_macro2::{Delimiter, Group, Ident, Literal, Span, TokenStream};
     pub fn peg_grammar<'input>(
         __input: &'input Input,
-    ) -> ::std::result::Result<Grammar, ::peg::error::ParseError<PositionRepr>> {
+    ) -> ::peg::ParseResults<Grammar, PositionRepr> {
         #![allow(non_snake_case, unused)]
         let mut __err_state = ::peg::error::ErrorState::new(::peg::Parse::start(__input));
         let mut __state = ParseState::new();
@@ -35,14 +35,12 @@ pub mod peg {
         ) {
             ::peg::RuleResult::Matched(__pos, __value) => {
                 if ::peg::Parse::is_eof(__input, __pos) {
-                    return __err_state.into_matched(__value, __input).into_result();
+                    return __err_state.into_matched(__value, __input);
                 } else {
                     __err_state.mark_failure(__pos, "EOF");
                 }
             }
-            ::peg::RuleResult::Error(__e) => {
-                return __err_state.into_error(__e, __input).into_result()
-            }
+            ::peg::RuleResult::Error(__e) => return __err_state.into_error(__e, __input),
             ::peg::RuleResult::Failed => (),
         }
         __state = ParseState::new();
@@ -64,7 +62,7 @@ pub mod peg {
             }
             _ => (),
         }
-        __err_state.into_failure(__input).into_result()
+        __err_state.into_failure(__input)
     }
     fn __parse_peg_grammar<'input>(
         __input: &'input Input,
