@@ -22,7 +22,24 @@ peg::parser!(grammar test_grammar() for str {
     rule atom_exp() = "(" _ exp() _ ")" / number() / name()
 });
 
+use std::fmt::Debug;
 use self::test_grammar::*;
+use peg::{ParseResults, ParseResult};
+use peg::error::{ParseError, ParseErr};
+
+fn expect_failed<T: Debug, L: Debug>(results: ParseResults<T, L>) -> (ParseError<L>, Vec<ParseErr<L>>) {
+    match results {
+        ParseResults { result: ParseResult::Failed(fail), errors } => (fail, errors),
+        r => panic!("Unexpected {:?}", r),
+    }
+}
+
+fn expect_error<T: Debug, L: Debug>(results: ParseResults<T, L>) -> (ParseErr<L>, Vec<ParseErr<L>>) {
+    match results {
+        ParseResults { result: ParseResult::Error(error), errors } => (error, errors),
+        r => panic!("Unexpected {:?}", r),
+    }
+}
 
 fn main() {
     let input = concat!(
@@ -30,19 +47,44 @@ fn main() {
         "  public static void main(String[] args) {\n",
         "    int n = 5;\n",
         "    int f = 1;\n",
-        "    while(0 < n) {\n",
+        "    while (0 < n) {\n",
         "      f = f * n;\n",
         "      n = n - 1\n",
         "    };\n",
         "    System.out.println(f);\n",
         "  }\n",
-        "}\n");
-    let r = prog(input).unwrap();
-    println!("{:?}", r);
-    let err = prog(input).unwrap_err();
+        "}\n"
+    );
 
-    // The best that can be done without recovery.
-    assert_eq!(err.location.line, 8);
-    assert_eq!(err.location.column, 5);
-    assert_eq!(err.expected.to_string(), "\"}\"");
+    // Parses successfully, but recovers from two errors.
+    let r = prog(input);
+    assert_eq!(r.clone().unwrap(), ());
+    assert_eq!(r.errors.len(), 2);
+    assert_eq!(r.errors[0].location.line, 8);
+    assert_eq!(r.errors[0].location.column, 5);
+    assert_eq!(r.errors[0].error, "missing semicolon in assignment");
+    assert_eq!(r.errors[1].location.line, 8);
+    assert_eq!(r.errors[1].location.column, 6);
+    assert_eq!(r.errors[1].error, "missing end of block");
+
+    // Alter input slightly to fail on first line.
+    // No rule to recover from this, so the parse fails.
+    let input2 = input.replace("public", "private");
+    let (fail, errors) = expect_failed(prog(&input2));
+    assert_eq!(fail.location.line, 1);
+    assert_eq!(fail.location.column, 1);
+    assert_eq!(format!("{}", fail.expected), r#""public""#);
+    assert_eq!(errors, vec![]);
+
+    // Alter input slightly to strip last two closing braces.
+    // Recovers from missing semicolon, but then when the block is not closed
+    // the recovery rule cannot find a '}' to close the block,
+    // so it returns an error.
+    let input3 = input.replace("}\n}\n", "");
+    let (error, errors) = expect_error(prog(&input3));
+    assert_eq!(error.location.line, 8);
+    assert_eq!(error.location.column, 6);
+    assert_eq!(error.error, "missing end of block");
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error, "missing semicolon in assignment");
 }

@@ -67,7 +67,6 @@ pub fn main() {
 The rule return type has changed between 0.7 to 0.8.
 To upgrade, add a call to `.into_result()` to convert the rule return type
 (which now supports reporting multiple errors) to a simple `Result`.
-
 ## Development
 
 The `rust-peg` grammar is written in `rust-peg`: `peg-macros/grammar.rustpeg`. To avoid the circular dependency, a precompiled grammar is checked in as `peg-macros/grammar.rs`. To regenerate this, run the `./bootstrap.sh` script.

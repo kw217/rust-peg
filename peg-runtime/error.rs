@@ -57,6 +57,16 @@ pub struct ParseErr<L> {
 
 impl Copy for ParseErr<usize> {}
 
+impl<L: Display> Display for ParseErr<L> {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
+        write!(
+            fmt,
+            "error at {}: {}",
+            self.location, self.error
+        )
+    }
+}
+
 /// An error from a parse failure.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ParseError<L> {

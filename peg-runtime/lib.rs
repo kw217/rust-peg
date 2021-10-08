@@ -7,6 +7,7 @@ pub mod str;
 
 /// The public API of a parser: the result of the parse, and the set of errors
 /// that were recovered from.
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ParseResults<T, L> {
     /// The result of the parse.
     pub result: ParseResult<T, L>,
@@ -27,6 +28,17 @@ impl<T, L> ParseResults<T, L> {
                     expected: error::ExpectedSet::singleton(e.error)
                 }
             ),
+        }
+    }
+}
+
+impl<T, L: Display> ParseResults<T, L> {
+    /// Return the contained match, or panic on failure or error.
+    pub fn unwrap(self) -> T {
+        match self.result {
+            ParseResult::Matched(v) => v,
+            ParseResult::Failed(e) => panic!("parse failed: {}", e),
+            ParseResult::Error(e) => panic!("parse {}", e),
         }
     }
 }
