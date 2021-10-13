@@ -782,11 +782,10 @@ fn compile_expr(context: &Context, e: &SpannedExpr, result_used: bool) -> TokenS
         RecoverExpr(ref message, ref expr) => {
             let recover_res = compile_expr(context, expr, result_used);
             quote_spanned! { span => {
+                let __parse_err = ::peg::error::ParseErr { error: #message, location: __pos };
                 if __err_state.suppress_fail == 0 {
-                    let __parse_err = ::peg::error::ParseErr { error: #message, location: __pos };
-
                     __err_state.suppress_fail += 1;
-                    let __recover_res = #recover_res;
+                    let __recover_res = { #recover_res };
                     __err_state.suppress_fail -= 1;
 
                     match __recover_res {
@@ -797,7 +796,7 @@ fn compile_expr(context: &Context, e: &SpannedExpr, result_used: bool) -> TokenS
                         ::peg::RuleResult::Failed | ::peg::RuleResult::Error(..) => ::peg::RuleResult::Error(__parse_err)
                     }
                 } else {
-                    ::peg::RuleResult::Error(::peg::error::ParseErr { error: #message, location: __pos })
+                    ::peg::RuleResult::Error(__parse_err)
                 }
             }}
         }

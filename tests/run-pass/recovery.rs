@@ -7,14 +7,14 @@ peg::parser!(grammar test_grammar() for str {
     rule number() = ['0'..='9']+
     pub rule prog()
         = "public" _ "class" _ name() _ "{" _ "public" _ "static" _ "void" _ "main" _ "(" _ "String" _ "[" _ "]" _ name() _ ")" _ block_stmt() _ "}" _
-    rule block_stmt() = "{" _ (stmt() _)* _ ("}" / error!("missing end of block" skip_to_rcur()))
+    rule block_stmt() = "{" _ (stmt() _)* _ ^^"}" / "missing end of block"{ skip_to_rcur() }
     rule skip_to_rcur() = (!"}" ("{" skip_to_rcur() / [^ '}']))* "}"
     rule stmt() = if_stmt() / while_stmt() / print_stmt() / dec_stmt() / assign_stmt() / block_stmt()
     rule if_stmt() = "if" _ "(" _ exp() _ ")" _ stmt() _ ("else" _ stmt() _)?
     rule while_stmt() = "while" _ "(" _ exp() _ ")" _ stmt()
     rule dec_stmt() = "int" _ name() _ ( "=" _ exp() _)? ";"
-    rule assign_stmt() = name() _ "=" _ exp() _ (";" / error!("missing semicolon in assignment"))
-    rule print_stmt() = "System.out.println" _ "(" _ exp() _ ")" _ ";"
+    rule assign_stmt() = name() _ "=" _ exp() _ ^^ ";" / "missing semicolon in assignment"{}
+    rule print_stmt() = "System.out.println" _ "(" _ exp() _ ")" _ ";" / "provoke_error" error!("provoked error" [^';']* ";")
     rule exp() = rel_exp() _ ("==" _ rel_exp() _)*
     rule rel_exp() = add_exp() _ ("<" _ add_exp() _)*
     rule add_exp() = mul_exp() _ (['+' | '-'] _ mul_exp() _)*
@@ -87,4 +87,20 @@ fn main() {
     assert_eq!(error.error, "missing end of block");
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].error, "missing semicolon in assignment");
+
+    // Provoke an error using the error! expression.
+    // Parses successfully, but recovers from three errors.
+    let input4 = input.replace("int f = 1", "provoke_error with a bunch of stuff that goes here");
+    let r = prog(&input4);
+    assert_eq!(r.clone().unwrap(), ());
+    assert_eq!(r.errors.len(), 3);
+    assert_eq!(r.errors[0].location.line, 4);
+    assert_eq!(r.errors[0].location.column, 18);
+    assert_eq!(r.errors[0].error, "provoked error");
+    assert_eq!(r.errors[1].location.line, 8);
+    assert_eq!(r.errors[1].location.column, 5);
+    assert_eq!(r.errors[1].error, "missing semicolon in assignment");
+    assert_eq!(r.errors[2].location.line, 8);
+    assert_eq!(r.errors[2].location.column, 6);
+    assert_eq!(r.errors[2].error, "missing end of block");
 }

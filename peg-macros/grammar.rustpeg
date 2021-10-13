@@ -121,6 +121,7 @@ rule primary() -> SpannedExpr
   / sp:sp() "quiet" "!" "{" e:expression() "}" { QuietExpr(Box::new(e)).at(sp) }
   / sp:sp() "expected" "!" "(" s:LITERAL() ")" { FailExpr(s).at(sp) }
   / sp:sp() "error" "!" "(" s:LITERAL() seq:sequence() ")" { RecoverExpr(s, Box::new(seq)).at(sp) }
+  / sp:sp() "^^" e:sequence() "/" s:LITERAL() "{" seq:sequence() "}" { ChoiceExpr(vec![e, RecoverExpr(s, Box::new(seq)).at(sp)]).at(sp) }
   / &("_" / "__" / "___") sp:sp() name:IDENT() { RuleExpr(name, Vec::new()).at(sp) }
   / sp:sp() name:IDENT() "(" args:(rule_arg() ** ",") ")" { RuleExpr(name, args).at(sp) }
   / sp:sp() l:LITERAL() { LiteralExpr(l).at(sp) }
