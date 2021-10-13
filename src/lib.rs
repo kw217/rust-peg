@@ -97,7 +97,7 @@
 //!     Rust block returns a `Result<T, &str>` instead of a value directly. On
 //!     `Ok(v)`, it matches successfully and returns `v`. On `Err(e)`, the match
 //!     of the entire expression fails and it tries alternatives or reports a
-//!     parse error with the `&str` `e`.
+//!     parse failure with the `&str` `e`.
 //!   * `e1 / e2 / e3` - _Ordered choice:_ try to match `e1`. If the match succeeds, return its
 //!     result, otherwise try `e2`, and so on.
 //!
@@ -131,7 +131,11 @@
 //!   * `expected!("something")` - fail to match, and report the specified string as expected
 //!     at the current location.
 //!   * `error!("message" e) - report error, then attempt to recover by matching the expression
-//!      or sequence `e` and returning its value. If recovery is not required, use `!()` as the expression.
+//!      or sequence `e` and returning its value.
+//!      If recovery is not required, use `!()` as the recovery expression.
+//!   * `^^e / "message" { e2 }` - attempt to match `e`; if it fails, report error and attempt to
+//!      recover by matching the expression or sequence `e2` and returning its value.
+//!      If recovery is not required, use `!()` as the recovery expression.
 //!   * `precedence!{ ... }` - Parse infix, prefix, or postfix expressions by precedence climbing.
 //!     [(details)](#precedence-climbing)
 //!
@@ -172,6 +176,10 @@
 //!
 //! The `error!("message" e)` syntax reports an error with the given message at the current
 //! location, and then attempts to recover by parsing `e` instead.
+//!
+//! Often it is necessary to report an error when an expression fails to match.
+//! The syntax `^^e / "message" { e2 }` is provided as a convenience.
+//! It abbreviates `( e / error!("message" e2))`.
 //!
 //! * When an error is reported, no further alternatives are tried: parsing immediately stops
 //!   at this point (unlike ordinary failure which causes the parser to try other choices).
@@ -330,8 +338,8 @@
 //! like `expr() "x" / expr() "y" / expr() "z"`, but this could be rewritten to
 //! `expr() ("x" / "y" / "z")` which would be even faster.
 //!
-//! `#[cache_left_rec]` extends the `#[cache]` mechanism with the ability to resolve 
-//! left-recursive rules, which are otherwise an error. 
+//! `#[cache_left_rec]` extends the `#[cache]` mechanism with the ability to resolve
+//! left-recursive rules, which are otherwise an error.
 //!
 //! The `precedence!{}` syntax is another way to handle nested operators and avoid
 //! repeatedly matching an expression rule.
