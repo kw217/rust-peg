@@ -8,14 +8,11 @@ peg::parser!( grammar arithmetic() for str {
     pub rule expression() -> i64
         =
           // The whole expression should just be a sum. If there's at least one
-          // character left over, report it (at the start of that character)
-          // and consume any more.
-          // We match the characters with lookahead first so that the error
-          // is reported at the first character; we consume them later.
-          _ v:sum() (&([_]+) error!("unexpected content at end" [_]+))? { v }  // @@@ could use better syntax here to get the position right
+          // character left over, report it and consume it.
+          _ v:sum() error_if!{ [_]+ | "unexpected content at end" }? { v }
           // If we reach this alternative, we've not found anything at all
           // (except possibly whitespace), so report that.
-        / error!("empty expression" _) { 0 }
+        / error!{"empty expression" _} { 0 }
 
     rule sum() -> i64
         = l:product() "+" _ r:sum() { l+r }
@@ -25,9 +22,7 @@ peg::parser!( grammar arithmetic() for str {
         =
           // If we see some common symbols, give a special error message explaining
           // why they don't work. Then just treat them as if they were addition.
-          // We match the character with lookahead first so taht the error
-          // is reported at the right location.
-          l:atom() ("*" / &['/' | '-' | '^'] error!("unsupported operation" [_])) _ r:product() { l*r }
+          l:atom() ("*" / error_if!{ ['/' | '-' | '^'] | "unsupported operation" }) _ r:product() { l*r }
         / atom()
 
     rule atom() -> i64
@@ -37,9 +32,9 @@ peg::parser!( grammar arithmetic() for str {
           // until we find that `)` (or EOF). This is likely to avoid a lot
           // of spurious error messages - usually the `)` hasn't been forgotten,
           // it's some error earlier.
-        / "(" _ v:sum() (")" _ / error!("missing close paren" skip_to_rparen())) { v }
-          // Some other character that wasn't expected. Report it (in the right location).
-        / &[_] error!("expected atom" [_] _) { 0 }
+        / "(" _ v:sum() error_unless!{ ")" _ | "missing close paren" skip_to_rparen() } { v }
+          // Some other character that wasn't expected. Report it.
+        / error_if!{[_] | "expected atom" _} { 0 }
 
     rule number() -> i64
         = n:$(['0'..='9']+) _ { n.parse().unwrap() }

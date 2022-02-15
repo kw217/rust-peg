@@ -164,7 +164,7 @@ impl<'a> LeftRecursionVisitor<'a> {
                nullable
             }
 
-            LiteralExpr(_) | PatternExpr(_) | MethodExpr(_, _) | FailExpr(_) | RecoverExpr(..) | MarkerExpr(_) => false,
+            LiteralExpr(_) | PatternExpr(_) | MethodExpr(_, _) | FailExpr(_) | RecoverIfExpr(..) | RecoverUnlessExpr(..) |MarkerExpr(_) => false,
 
             PositionExpr => true,
         }
@@ -272,7 +272,7 @@ impl<'a> LoopNullabilityVisitor<'a> {
                 nullable
             }
 
-            LiteralExpr(_) | PatternExpr(_) | MethodExpr(_, _) | FailExpr(_) | RecoverExpr(..) | MarkerExpr(_) => false,
+            LiteralExpr(_) | PatternExpr(_) | MethodExpr(_, _) | FailExpr(_) | RecoverIfExpr(..) |RecoverUnlessExpr(..) | MarkerExpr(_) => false,
             PositionExpr => true,
         }
     }

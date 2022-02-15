@@ -779,28 +779,66 @@ fn compile_expr(context: &Context, e: &SpannedExpr, result_used: bool) -> TokenS
         FailExpr(ref expected) => {
             quote_spanned! { span => { __err_state.mark_failure(__pos, #expected); ::peg::RuleResult::Failed }}
         }
-        RecoverExpr(ref message, ref expr) => {
-            let recover_res = compile_expr(context, expr, result_used);
+        RecoverIfExpr(ref expr1, ref message, ref expr2) => {
+            let if_res = compile_expr(context, expr1, false);
+            let recover_res = compile_expr(context, expr2, result_used);
             quote_spanned! { span => {
-                let __parse_err = ::peg::error::ParseErr { error: #message, location: __pos };
-                if __err_state.suppress_fail == 0 {
-                    __err_state.suppress_fail += 1;
-                    let __recover_res = { #recover_res };
-                    __err_state.suppress_fail -= 1;
+                let __if_res = { #if_res };
+                match __if_res {
+                    ::peg::RuleResult::Failed => ::peg::RuleResult::Failed,
+                    ::peg::RuleResult::Error(__e) => ::peg::RuleResult::Error(__e),
+                    ::peg::RuleResult::Matched(__newpos, _) => {
+                        // Report error (if any) at start of `expr1`, then consume it by shadowing `__pos`.
+                        let __parse_err = ::peg::error::ParseErr { error: #message, location: __pos };
+                        let __pos = __newpos;
+                        if __err_state.suppress_fail == 0 {
+                            __err_state.suppress_fail += 1;
+                            let __recover_res = { #recover_res };
+                            __err_state.suppress_fail -= 1;
 
-                    match __recover_res {
-                        ::peg::RuleResult::Matched(__newpos, __value) => {
-                            __err_state.mark_error(__parse_err);
-                            ::peg::RuleResult::Matched(__newpos, __value)
-                        },
-                        ::peg::RuleResult::Failed | ::peg::RuleResult::Error(..) => ::peg::RuleResult::Error(__parse_err)
-                    }
-                } else {
-                    ::peg::RuleResult::Error(__parse_err)
+                            match __recover_res {
+                                ::peg::RuleResult::Matched(__newpos, __value) => {
+                                    __err_state.mark_error(__parse_err);
+                                    ::peg::RuleResult::Matched(__newpos, __value)
+                                },
+                                ::peg::RuleResult::Failed | ::peg::RuleResult::Error(..) => ::peg::RuleResult::Error(__parse_err)
+                            }
+                        } else {
+                            ::peg::RuleResult::Error(__parse_err)
+                        }
+                    },
                 }
             }}
         }
+        RecoverUnlessExpr(ref expr1, ref message, ref expr2) => {
+            let unless_res = compile_expr(context, expr1, result_used);
+            let recover_res = compile_expr(context, expr2, result_used);
+            quote_spanned! { span => {
+                let __unless_res = { #unless_res };
+                match __unless_res {
+                    ::peg::RuleResult::Matched(__newpos, __value) => ::peg::RuleResult::Matched(__newpos, __value),
+                    ::peg::RuleResult::Error(__e) => ::peg::RuleResult::Error(__e),
+                    ::peg::RuleResult::Failed => {
+                        let __parse_err = ::peg::error::ParseErr { error: #message, location: __pos };
+                        if __err_state.suppress_fail == 0 {
+                            __err_state.suppress_fail += 1;
+                            let __recover_res = { #recover_res };
+                            __err_state.suppress_fail -= 1;
 
+                            match __recover_res {
+                                ::peg::RuleResult::Matched(__newpos, __value) => {
+                                    __err_state.mark_error(__parse_err);
+                                    ::peg::RuleResult::Matched(__newpos, __value)
+                                },
+                                ::peg::RuleResult::Failed | ::peg::RuleResult::Error(..) => ::peg::RuleResult::Error(__parse_err)
+                            }
+                        } else {
+                            ::peg::RuleResult::Error(__parse_err)
+                        }
+                    },
+                }
+            }}
+        }
         PrecedenceExpr { ref levels } => {
             let mut pre_rules = Vec::new();
             let mut level_code = Vec::new();

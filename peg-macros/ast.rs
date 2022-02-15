@@ -85,7 +85,8 @@ pub enum Expr {
     PositionExpr,
     QuietExpr(Box<SpannedExpr>),
     FailExpr(Literal),
-    RecoverExpr(Literal, Box<SpannedExpr>),
+    RecoverIfExpr(Box<SpannedExpr>, Literal, Box<SpannedExpr>),
+    RecoverUnlessExpr(Box<SpannedExpr>, Literal, Box<SpannedExpr>),
     PrecedenceExpr {
         levels: Vec<PrecedenceLevel>,
     },

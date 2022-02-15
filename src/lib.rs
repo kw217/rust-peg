@@ -132,12 +132,13 @@
 //!     error messages.
 //!   * `expected!("something")` - fail to match, and report the specified string as expected
 //!     at the current location.
-//!   * `error!("message" e) - report error, then attempt to recover by matching the expression
-//!      or sequence `e` and returning its value.
-//!      If recovery is not required, use `!()` as the recovery expression.
-//!   * `^^e / "message" { e2 }` - attempt to match `e`; if it fails, report error and attempt to
-//!      recover by matching the expression or sequence `e2` and returning its value.
-//!      If recovery is not required, use `!()` as the recovery expression.
+//!   * `error!{ "message" e2 }` - report error at this location, then attempt to recover
+//!     by matching the expression or sequence `e2` and returning its value.
+//!     If recovery is not required, use `!()` as the recovery expression.
+//!   * `error_if!{ e1 | "message" e2 }` - attempt to match the expression or sequence `e1`.
+//!     If it matches, report error at the start of `e1`, then attempt to recover as for `error!{}`.
+//!   * `error_unless!{ e1 | "message" e2 }` - attempt to match the expression or sequence `e1`.
+//!     If it does not match, report error, then attempt to recover as for `error!{}`.
 //!   * `precedence!{ ... }` - Parse infix, prefix, or postfix expressions by precedence climbing.
 //!     [(details)](#precedence-climbing)
 //!
@@ -171,17 +172,24 @@
 //!
 //! ### Errors
 //!
-//! Errors support recovery: the ability to report an error but continue to parse the rest of the
-//! input anyway. This allows the parser to report more than one error at once, and to provide
+//! Errors support recovery: they allow the parser to report an error but continue to parse the rest of the
+//! input anyway. This means the parser can report more than one error at once, and can provide
 //! a sensible parse of most of the input even when there are errors.
 //! These are useful in applications like IDEs.
 //!
-//! The `error!("message" e)` syntax reports an error with the given message at the current
-//! location, and then attempts to recover by parsing `e` instead.
+//! There are three expressions for raising an error:
 //!
-//! Often it is necessary to report an error when an expression fails to match.
-//! The syntax `^^e / "message" { e2 }` is provided as a convenience.
-//! It abbreviates `( e / error!("message" e2))`.
+//!   * `error!{ "message" e2 }` is the simplest form. It reports an error with the given
+//!     message at the current location, then attempts to recover by parsing `e2` instead.
+//!   * `error_if!{ e1 | "message" e2 }` allows the error to be reported at an earlier
+//!     location. It attempts to parse `e1`; if it succeeds it reports an error with
+//!     the given message at the start of `e1`, then attempts to recover by parsing `e2` instead.
+//!   * `error_unless!{ e1 | "message" e2 }` is shorthand for a choice expression.
+//!     It is useful in order to report an error when an expression fails to match.
+//!     It attempts to parse `e1`; if it fails it reports an error with the given message
+//!     at the current location, then attempts to recover by parsing `e2` instead.
+//!
+//! Error handling works as follows:
 //!
 //! * When an error is reported, no further alternatives are tried: parsing immediately stops
 //!   at this point (unlike ordinary failure which causes the parser to try other choices).
@@ -196,7 +204,8 @@
 //! _Syntax Error Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1806.11150)
 //! and [Sérgio Queiroz de Medeiros, Gilney de Azevedo Alvez Junior, and Fabio Mascarenhas,
 //! _Automatic Syntax Error Reporting and Recovery in Parsing Expression Grammars_](https://arxiv.org/abs/1905.02145).
-//! Tracking the furthest failure position is simplified by observing that an error
+//! The `error_unless!{}` form corresponds to the labelled-expression sugar in the paper.
+//! `rust-peg` simplifies tracking the furthest failure position by observing that an error
 //! is always reported over a failure even if a previous failure was further through the input;
 //! thus there is no need to track the error location separately.
 //! `rust-peg` treats failure or error of a recovery expression differently than Medeiros and
