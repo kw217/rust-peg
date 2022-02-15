@@ -1,7 +1,7 @@
 //! Parse error reporting
 
 use crate::{Parse, RuleResult, ParseResults, ParseResult};
-use std::collections::HashSet;
+use std::collections::{HashSet, BTreeSet};
 use std::fmt::{self, Debug, Display};
 
 /// A set of literals or names that failed to match
@@ -67,6 +67,15 @@ impl<L: Display> Display for ParseErr<L> {
     }
 }
 
+impl<L> ParseErr<L> {
+    pub fn into_parseerror(self) -> ParseError<L> {
+        ParseError {
+            location: self.location,
+            expected: ExpectedSet::singleton(self.error)
+        }
+    }
+}
+
 /// A parse failure.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ParseError<L> {
@@ -111,7 +120,7 @@ pub struct ErrorState {
     pub expected: ExpectedSet,
 
     /// The set of parse errors we have recovered from so far.
-    pub errors: Vec<ParseErr<usize>>,
+    pub errors: BTreeSet<ParseErr<usize>>,
 }
 
 impl ErrorState {
@@ -123,7 +132,7 @@ impl ErrorState {
             expected: ExpectedSet {
                 expected: HashSet::new(),
             },
-            errors: vec![],
+            errors: BTreeSet::new(),
         }
     }
 
@@ -157,7 +166,7 @@ impl ErrorState {
     #[inline(always)]
     pub fn mark_error(&mut self, error: ParseErr<usize>) {
         if self.suppress_fail == 0 {
-            self.errors.push(error);
+            self.errors.insert(error);
         }
     }
 
@@ -193,7 +202,7 @@ impl ErrorState {
 }
 
 /// Calculate locations of set of parse errors.
-fn errors_positioned_in<I: Parse + ?Sized>(errors: Vec<ParseErr<usize>>, input: &I) -> Vec<ParseErr<I::PositionRepr>> {
+fn errors_positioned_in<I: Parse + ?Sized>(errors: impl IntoIterator<Item = ParseErr<usize>>, input: &I) -> Vec<ParseErr<I::PositionRepr>> {
     let mut errors_ret = vec![];
     for error in errors {
         errors_ret.push(ParseErr { location: input.position_repr(error.location), error: error.error })

@@ -40,7 +40,9 @@
 //!
 //! * Use `unwrap()` to obtain the successful `T` or panic.
 //! * Use `into_result()` to obtain a `Result<T, _>`.
-//!   Failures and errors are combined.
+//!   Failures and errors are combined, and recovery is treated as failure.
+//! * Use `recover_result()` to obtain a `Result<T, _>`.
+//!   Failures and errors are combined, and recovery can result in success.
 //! * For full details, match on the `result` field and examine the set of
 //!   recovered errors in the `errors` field.
 //!

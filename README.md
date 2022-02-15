@@ -64,9 +64,10 @@ pub fn main() {
 
 ## Upgrade guide
 
-The rule return type has changed between 0.7 to 0.8.
-To upgrade, add a call to `.into_result()` to convert the rule return type
-(which now supports reporting multiple errors) to a simple `Result`.
+The rule return type has changed between 0.7 to 0.8,
+and now supports recovery and reporting multiple errors.
+To upgrade, add a call to `.into_result()` to convert the new rule return type
+to a simple `Result`.
 ## Development
 
 The `rust-peg` grammar is written in `rust-peg`: `peg-macros/grammar.rustpeg`. To avoid the circular dependency, a precompiled grammar is checked in as `peg-macros/grammar.rs`. To regenerate this, run the `./bootstrap.sh` script.
@@ -74,3 +75,4 @@ The `rust-peg` grammar is written in `rust-peg`: `peg-macros/grammar.rustpeg`. T
 There is a large test suite which uses [`trybuild`](https://crates.io/crates/trybuild) to support testing for compilation failure errors.
 Use `cargo test` to run the entire suite,
 or `cargo test -- trybuild trybuild=lifetimes.rs` to test just the indicated file.
+Add `--features trace` to trace these tests.

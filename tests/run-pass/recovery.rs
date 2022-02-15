@@ -8,7 +8,7 @@ peg::parser!(grammar test_grammar() for str {
     pub rule prog()
         = "public" _ "class" _ name() _ "{" _ "public" _ "static" _ "void" _ "main" _ "(" _ "String" _ "[" _ "]" _ name() _ ")" _ block_stmt() _ "}" _
     rule block_stmt() = "{" _ (stmt() _)* _ ^^"}" / "missing end of block"{ skip_to_rcur() }
-    rule skip_to_rcur() = (!"}" ("{" skip_to_rcur() / [^ '}']))* "}"
+    rule skip_to_rcur() = ("{" skip_to_rcur() / [^ '{' '}'])* "}"
     rule stmt() = if_stmt() / while_stmt() / print_stmt() / dec_stmt() / assign_stmt() / block_stmt()
     rule if_stmt() = "if" _ "(" _ exp() _ ")" _ stmt() _ ("else" _ stmt() _)?
     rule while_stmt() = "while" _ "(" _ exp() _ ")" _ stmt()
